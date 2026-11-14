@@ -254,6 +254,13 @@ function Main({ data }: { data: DataStore }) {
   const [intro, setIntro] = useState(() => { try { return !location.hash && localStorage.getItem('earthrise-intro') !== 'seen' } catch { return false } })
   const closeIntro = () => { setIntro(false); try { localStorage.setItem('earthrise-intro', 'seen') } catch { /* private mode: show it again next time */ } }
   const [copied, setCopied] = useState(false)
+  // the timeline's name column: narrow on phones, so the lanes keep most of the width
+  const [nameW, setNameW] = useState(() => (window.innerWidth < 700 ? 124 : 268))
+  useEffect(() => {
+    const on = () => setNameW(window.innerWidth < 700 ? 124 : 268)
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
   const copyLink = () => {
     writeShared(data.epochMs, view, now, brief, layer, selected, compared)
     void navigator.clipboard?.writeText(location.href).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000) })
@@ -368,14 +375,14 @@ function Main({ data }: { data: DataStore }) {
         />
       )}
 
-      <footer className="bottom">
+      <footer className="bottom" style={{ '--ribbon-name-w': `${nameW}px` } as React.CSSProperties}>
         <div className="transport">
           <button type="button" className="text" onClick={() => { setSlipping(false); setSpeed(12); setPlaying((v) => !v) }}>{playing ? 'Pause' : 'Play time'}</button>
           <span className="clock narrow">{fmtDateTime(data.epochMs + now * 3600e3)} UTC</span>
           <button type="button" className="text" onClick={() => setNow(brief.landing)}>Jump to landing</button>
         </div>
         <Calendar
-          data={calendar} t0={spanT0} hours={SPAN_H} epochMs={data.epochMs} landing={brief.landing} nameWidth={268}
+          data={calendar} t0={spanT0} hours={SPAN_H} epochMs={data.epochMs} landing={brief.landing} nameWidth={nameW}
           onLanding={(h) => setBrief((b) => ({ ...b, landing: Math.round(h) }))}
         />
         <Ribbon
