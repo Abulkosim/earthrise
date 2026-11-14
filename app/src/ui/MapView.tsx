@@ -32,7 +32,8 @@ interface Props {
 }
 
 const MIN_MPP = 6, MAX_MPP = 900
-const FIELD_W = -262144 // about a quarter of a million points, whatever the shape of the map
+// Points in the field. Starts at about a quarter of a million and halves on GPUs that take too long.
+let fieldBudget = 262144
 
 export function MapView(p: Props) {
   const wrap = useRef<HTMLDivElement>(null)
@@ -128,8 +129,10 @@ export function MapView(p: Props) {
     if (id !== settleId.current) return
     requestFrame()
     status('horizons', 0)
-    const ok = await e.bake(q.brief.mission.mast, FIELD_W, (f) => { if (id === settleId.current) status('horizons', f) })
+    const ok = await e.bake(q.brief.mission.mast, -fieldBudget, (f) => { if (id === settleId.current) status('horizons', f) })
     if (!ok || id !== settleId.current) return
+    if (e.stats.bakeMs > 9000 && fieldBudget > 65536) fieldBudget /= 2
+    else if (e.stats.bakeMs < 2500 && fieldBudget < 262144) fieldBudget *= 2
     await evaluate()
   }, [dpr, evaluate, requestFrame, status])
   const scheduleSettle = useCallback(() => {
@@ -334,7 +337,7 @@ export function MapView(p: Props) {
                 <g key={s.id} className={`site${sel ? ' sel' : ''}${cmp ? ' cmp' : ''}`} transform={`translate(${px} ${py})`}
                   onPointerDown={(ev) => ev.stopPropagation()} onClick={() => p.onPick(s.lat, s.lon, s)}>
                   <circle r={sel ? 7 : 4.5} />
-                  {(sel || cmp || mpp < 260) && <text x={10} y={4} className="place">{s.name}</text>}
+                  {(sel || cmp || mpp < 22) && <text x={10} y={4} className="place">{s.name}</text>}
                 </g>
               )
             })}
