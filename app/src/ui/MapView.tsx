@@ -173,23 +173,32 @@ export function MapView(p: Props) {
     if (id !== settleId.current) return
     requestFrame()
     status('horizons', 0)
-    // A few percent in, the time for the whole bake is known. If this machine would need more than
-    // 15 seconds, start again with as many points as it can do in about 8.
-    const t0 = performance.now()
-    let restart = false
+    // The rate between 5% and 12% of the bake tells how long the whole of it will take. (The first
+    // few percent are left out: they include compiling the shader and loading tiles, which says
+    // nothing about the GPU.) If this machine would need more than 15 seconds, start again with as
+    // many points as it can do in about 8.
+    let t5 = 0, restart = false
     const ok = await e.bake(q.brief.mission.mast, -fieldBudget, (f) => {
       if (id !== settleId.current || restart) return
       status('horizons', f)
-      const est = (performance.now() - t0) / f
-      if (f >= 0.03 && f < 0.3 && est > 15000 && fieldBudget > 16384) {
-        fieldBudget = Math.max(16384, Math.floor((fieldBudget * 8000) / est / 4096) * 4096)
-        restart = true
-        queueMicrotask(() => { void settle() })
+      if (!t5 && f >= 0.05) t5 = performance.now()
+      if (t5 && f >= 0.12 && f < 0.4) {
+        const est = (performance.now() - t5) / (f - 0.05)
+        if (est > 15000 && fieldBudget > 16384) {
+          fieldBudget = Math.max(16384, Math.floor((fieldBudget * 8000) / est / 4096) * 4096)
+          restart = true
+          queueMicrotask(() => { void settle() })
+        }
       }
     })
     if (!ok || restart || id !== settleId.current) return
-    if (e.stats.bakeMs < 2500 && fieldBudget < 262144) fieldBudget = Math.min(262144, fieldBudget * 2)
     await evaluate()
+    // A small field that baked fast was sized for a slower moment (a busy machine, a cold start).
+    // Grow it toward what this GPU does in about 4 seconds and trace again; the picture sharpens.
+    if (id === settleId.current && e.stats.bakeMs < 2500 && fieldBudget < 262144) {
+      fieldBudget = Math.min(262144, Math.floor((fieldBudget * Math.min(8, 4000 / Math.max(200, e.stats.bakeMs))) / 4096) * 4096)
+      void settle()
+    }
   }, [dpr, evaluate, requestFrame, status])
   const scheduleSettle = useCallback(() => {
     window.clearTimeout(settleTimer.current)
