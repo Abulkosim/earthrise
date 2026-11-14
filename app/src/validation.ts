@@ -4,7 +4,7 @@
 // card per check in a readable column. On wide screens a rail on the left lists the sections.
 import './index.css'
 import './validation.css'
-import { explain, goddardCheck, horizonCheck, type GoddardResult, type PointRow } from './checks'
+import { barkerCheck, explain, goddardCheck, horizonCheck, type BarkerRow, type GoddardResult, type PointRow } from './checks'
 import report from './data/validation.json'
 import { DataStore } from './engine/data'
 import { Engine } from './engine/engine'
@@ -52,6 +52,7 @@ const ICONS = {
   pin: '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
   limits: '<path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/>',
   terminal: '<path d="M12 19h8"/><path d="m4 17 6-6-6-6"/>',
+  table: '<path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/>',
 } as const
 type IconName = keyof typeof ICONS
 function icon(name: IconName, c = '') {
@@ -205,8 +206,8 @@ function opening() {
     h('h1', {}, 'How we know it is right'),
     h('p', { class: 'lede' },
       'A planner who picks a landing site from Earthrise is betting the mission on its numbers: a site it calls sunlit for 80 percent of a stay must really be, or the lander runs its battery flat in the dark. ',
-      'So we checked each part of the model, from where the Sun and the Earth are to what the terrain hides, against sources outside the project: JPL Horizons, the Apollo records, NASA Goddard\'s illumination maps and our own slower reference code.'),
-    p(cls('note', 'Unless a table says otherwise, the numbers are from our own runs; the GPU checks ran on an Apple M2 Pro in Chrome. Two of the checks have a button that recomputes them on your GPU, in this page, and puts your numbers next to ours.')))
+      'So we checked each part of the model, from where the Sun and the Earth are to what the terrain hides, against sources outside the project: JPL Horizons, the Apollo records, NASA Goddard\'s illumination maps, a published table of the lighting on the connecting ridge and our own slower reference code.'),
+    p(cls('note', 'Unless a table says otherwise, the numbers are from our own runs; the GPU checks ran on an Apple M2 Pro in Chrome. Three of the checks have a button that recomputes them on your GPU, in this page, and puts your numbers next to ours.')))
 }
 
 // ---- sections ------------------------------------------------------------------
@@ -263,10 +264,15 @@ function horizonSection() {
     })
   return section('horizon', 'horizon', 'The terrain horizon',
     p('Knowing where the Sun is helps only if you also know what blocks it. At the pole the Sun never climbs more than about a degree and a half above the horizon, so a ridge 10 km away decides whether a site is lit.'),
-    p('The GPU engine walks the LOLA terrain outward from every pixel of the view in 360 directions and keeps the highest angle it meets: the horizon. It reads 20 m terrain close to the point and coarser maps further out, up to 400 km away, and it allows for the curve of the Moon. On our M2 Pro it does this for about 265,000 points in 3 to 5 seconds. Then it runs the mission hour by hour against those horizons.'),
+    h('h3', {}, 'Which terrain map'),
+    p('Earthrise uses NASA Goddard\'s track-adjusted LOLA maps: 5 m per pixel from 87° S to the pole (Barker et al. 2021), 20 m to 80° S and 240 m to 60° S (Barker et al. 2023).'),
+    p('Earlier versions used the older LOLA mosaics from the PDS. Those carry errors along the laser tracks: ridges a few metres high that are not on the ground. With the Sun almost on the horizon, such a ridge casts a long shadow. On the connecting ridge next to Shackleton crater, the older 5 m mosaic gave a longest lit period of about 25 days; the adjusted map gives about 220, close to the published value. The adjusted maps remove those track errors, so we switched.'),
+    h('h3', {}, 'How the engine finds the horizon'),
+    p(`The GPU engine walks the terrain outward from every pixel of the view in 360 directions and keeps the highest angle it meets: the horizon. It nests four grids: the finest one that covers the view (5 m to 80 m), a 20 or 40 m ring around a 5 or 10 m focus, then 160 m and 960 m further out, up to 400 km away. It allows for the curve of the Moon. In the Goddard run below it traced 262,144 horizons in ${report.goddard.horizons_s.toFixed(1)} seconds. Then it runs the mission hour by hour against those horizons.`),
     p('It also runs 18.6 years in 12-hour steps against the same horizons, marks the ground that never sees any part of the Sun as permanent shadow, and measures how far every point is from it.'),
     p('Fast code is easy to get wrong, so we also wrote a slow reference model in Python that does the same walk one point at a time, in 720 directions, on the full-resolution maps. We picked 24 hard points near the pole: ridges, crater rims and crater floors that never see the Sun. For each we compare the horizon in all 720 directions, and then the share of time the Sun is up and the Earth is in view over two lunar days (59 days from 1 January 2027, hourly, with a 2 m mast).'),
-    h('p', { class: 'vresult' }, h('strong', {}, 'Our run: '), 'the horizon differed by 0.008 degrees on average, and the sunlit and Earth-contact shares agreed within 0.2 percentage points at every one of the 24 points.'),
+    p('The engine views each point at 5 m per pixel, so it reads the same 5 m terrain as the reference wherever that terrain exists.'),
+    h('p', { class: 'vresult' }, h('strong', {}, 'Our run: '), 'on the adjusted maps the horizon differed by 0.008 degrees on average and 0.16 degrees at most, and the sunlit and Earth-contact shares agreed within 0.2 percentage points at every one of the 24 points. Safari 26.6 gave the same numbers as Chrome.'),
     run, tableWrap, summary,
   )
 }
@@ -287,19 +293,21 @@ function paint(cv: HTMLCanvasElement, v: Float32Array, w: number, h: number) {
 }
 
 function goddardSection() {
-  const ours = { sun: { corr: 0.942, mae: 1.78, bias: 0.48 }, earth: { corr: 0.975, mae: 1.32, bias: 0.22 } }
+  // our run on the adjusted maps, stored in validation.json (how it was measured is written there)
+  const ours = report.goddard
   const head = [['', 'Points', 'Correlation', 'Mean absolute difference', 'Bias']]
   const rows: Child[][] = []
   for (const body of ['sun', 'earth'] as const) {
     const o = ours[body]
-    rows.push([h('span', {}, body === 'sun' ? sun() : earth(), ', our run'), '262,144', o.corr.toFixed(3), `${o.mae.toFixed(2)} points`, `${signed(o.bias)} points`])
+    rows.push([h('span', {}, body === 'sun' ? sun() : earth(), ', our run'), o.points.toLocaleString('en-US'), o.corr.toFixed(3), `${o.mae_pts.toFixed(2)} points`, `${signed(o.bias_pts)} points`])
     rows.push([h('span', {}, body === 'sun' ? sun() : earth(), ', your browser'), '', '', '', ''])
   }
   const t = table(head, rows, { caption: 'Shares of time in percentage points. Bias is ours minus theirs: positive means we see the body slightly more often.' })
   // the "your browser" rows: first cell holds the label, the rest fill in after a run
   const yourRows = Array.from(t.querySelectorAll('tbody tr')).filter((_, i) => i % 2 === 1)
   for (const [i, r] of yourRows.entries()) r.className = `vyours tone-row-${i === 0 ? 'sun' : 'earth'}`
-  // permanent shadow: no stored number from our run yet, only the live one
+  // permanent shadow: our run (same as above), then the live one
+  const psrOurs = ours.psr
   const psrResult = p(h('strong', {}, 'Your browser: '), cls('muted', 'press the button below to compute it.'))
   psrResult.className = 'vresult'
   const fill = (res: GoddardResult) => {
@@ -341,32 +349,117 @@ function goddardSection() {
     t,
     h('h3', {}, 'Permanent shadow'),
     p('Ground that never sees any part of the Sun can hold ice, and the app lets a brief ask for it near the landing point. Among the compared points, we count those that are never lit in Goddard\'s map (a stored value of 0) and those that are never lit in ours (no 12-hour step with any part of the Sun over the 18.6 years), and how many are both.'),
-    p(cls('note', 'We have no stored number from our own run for this yet. It is computed live only, when you press the button.')),
+    h('p', { class: 'vresult' }, h('strong', {}, 'Our run: '),
+      `of the ${psrOurs.theirs.toLocaleString('en-US')} points Goddard's map calls permanently shadowed, ${pct(psrOurs.ours_of_theirs)} are permanently shadowed in ours. `,
+      `Of the ${psrOurs.ours.toLocaleString('en-US')} points permanently shadowed in ours, ${pct(psrOurs.theirs_of_ours)} are permanently shadowed in theirs.`),
     psrResult,
-    p('Their map uses a 60 m elevation model from 2016; ours uses the 20 m LOLA map. So some difference is expected even if both are right.'),
+    p('Their map uses a 60 m elevation model from 2016; ours uses the newer track-adjusted maps. So some difference is expected even if both are right.'),
     run, maps,
   )
 }
 
+// Our run of barkerCheck, stored in validation.json: the 14 rows of the table, each with the paper's bound.
+const BARKER_OURS: BarkerRow[] = report.barker.rows
+
+/** How many of a row's three values sit on the right side of the paper's bound. */
+const barkerPasses = (r: BarkerRow) => Number(r.avg >= r.paperAvgP1) + Number(r.lcipDays >= r.paperLcipP1) + Number(r.lcspDays <= r.paperLcspP99)
+
+function barkerTable(rows: BarkerRow[], caption?: string) {
+  const head = [['Region', sun('Average illumination'), sun('Longest lit period'), 'Longest shadow', 'Right side']]
+  // ours on top, the paper's bound under it
+  const cell = (ours: string, bound: string) => h('span', {}, ours, h('span', { class: 'vbound' }, bound))
+  const body = rows.map((r) => {
+    const n = barkerPasses(r)
+    return [h('span', {}, `${r.roi}, at ${r.mast} m`, h('span', { class: 'vbound' }, `${r.pixels} pixels`)),
+      cell(`${r.avg.toFixed(1)}%`, `paper at least ${r.paperAvgP1.toFixed(1)}%`),
+      cell(`${r.lcipDays.toFixed(1)} d`, `paper at least ${r.paperLcipP1.toFixed(1)} d`),
+      cell(`${r.lcspDays.toFixed(1)} d`, `paper at most ${r.paperLcspP99.toFixed(1)} d`),
+      n === 3 ? 'all 3' : cls('vfail', `${n} of 3`)]
+  })
+  const t = table(head, body, { caption, tones: ['', 'sun', 'sun', '', ''] })
+  t.classList.add('vbarker')
+  return t
+}
+
+function barkerSection() {
+  const passed = BARKER_OURS.reduce((a, r) => a + barkerPasses(r), 0)
+  const at5 = BARKER_OURS.filter((r) => r.mast === 5)
+  const above = at5.map((r) => r.avg - r.paperAvgP1)
+  const range = (a: number[], d = 1) => `${Math.min(...a).toFixed(d)} to ${Math.max(...a).toFixed(d)}`
+  const yours = h('div', { class: 'vreveal', hidden: '' })
+  const summary = h('p', { class: 'vsummary', hidden: '' })
+  const run = liveCheck('The button runs the same comparison on your GPU. It downloads the 5 m terrain of the ridge, a few megabytes, traces the horizon at each of the 2,114 pixels and runs the two years hour by hour. It took about half a minute on our computer the first time, and a few seconds once the terrain was in the browser\'s cache.',
+    async (set) => {
+      const eng = await engine()
+      yours.hidden = true
+      summary.hidden = true
+      const r = await barkerCheck(eng, (d, t, label) => { if (d < t) set(`${label[0].toUpperCase()}${label.slice(1)}.`, d / t) })
+      yours.replaceChildren(h('h3', {}, 'Your browser'), barkerTable(r.rows))
+      yours.hidden = false
+      const ok = r.rows.reduce((a, x) => a + barkerPasses(x), 0)
+      summary.textContent = `On this computer: ${ok} of the ${r.rows.length * 3} values are on the right side of the paper's bound.`
+      summary.hidden = false
+    })
+  return section('barker', 'table', 'Against a published table',
+    p('Barker et al. 2021 (Planetary and Space Science 203:105119) made the 5 m terrain map that Earthrise now uses. Their Table 2 gives the lighting of seven small regions on the connecting ridge next to Shackleton crater, from 1 January 2024 to 1 January 2026, hourly, for an observer 1 m and 5 m above the ground: the average share of the Sun that is visible, the longest stretch with any of the Sun in view and the longest stretch with none of it.'),
+    p('Their numbers are not single values. They made 100 copies of the terrain, each with random errors of the size the map is expected to have, and give a percentile over those copies: the 1st percentile for the average illumination and the longest lit period, the 99th for the longest shadow. Ours is one run on the terrain as published. So we cannot expect to match their numbers, only to fall on the right side of each bound: at least their 1st percentile for the first two, at most their 99th for the shadow.'),
+    p('We trace the horizon at every 5 m pixel inside each region, 2,114 in all, and average over the region as they do.'),
+    h('h3', {}, 'Our run'),
+    barkerTable(BARKER_OURS, 'Ours: one run on the published terrain, the region average, a uniform Sun disc. Paper: percentiles over 100 terrain copies, with a limb-darkened Sun.'),
+    h('p', { class: 'vresult' }, h('strong', {}, 'Our run: '),
+      `${passed} of the ${BARKER_OURS.length * 3} values are on the right side of the paper's bound. `,
+      `At 5 m height our average illumination is ${range(above)} points above their 1st percentile, `,
+      `our longest lit period is ${range(at5.map((r) => r.lcipDays), 0)} days against their ${range(at5.map((r) => r.paperLcipP1), 0)}, `,
+      `and our longest shadow ${range(at5.map((r) => r.lcspDays))} days against their ${range(at5.map((r) => r.paperLcspP99))}.`),
+    p('At 1 m height the paper\'s bounds are looser and our values sit further inside them.'),
+    run, yours, summary,
+  )
+}
+
+// Measured with pipeline/scripts/make_test_fixtures.py at the catalogue's connecting-ridge point, first step 5 m against 1.25 m.
+const SITE_STEP_NOTE = 'The reference walks outward from the point in steps that start at 1.25 m. An earlier run started at 5 m and skipped terrain on the 5 m map: on the connecting ridge its horizon was off by up to 0.37 degrees and its longest dark by 2 hours. The GPU engine agreed with the finer walk, so this comparison corrected the reference, not the app.'
+
 function siteSection() {
+  // reference: the stay summaries of the unit-test fixture; app: the same sites computed in the app page.
+  // Both are stored in validation.json.
+  const sp = report.site_panel
+  const app = new Map(report.site_panel_app.sites.map((x) => [x.id, x]))
+  const land = new Date(sp.start_utc + 'Z')
+  const date = `${land.getUTCDate()} ${land.toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' })} ${land.getUTCFullYear()}`
+  const where = (lat: number, lon: number) => ` (${Math.abs(lat).toFixed(2)}° ${lat < 0 ? 'S' : 'N'}, ${lon.toFixed(2)}° E)`
+  const thead = [
+    [h('th', { rowspan: '2', class: 'left' }, 'Site'), h('th', { colspan: '2' }, sun('Sunlit')), h('th', { colspan: '2' }, sun('Longest dark')), h('th', { colspan: '2' }, earth('Earth contact'))],
+    ['reference', 'app', 'reference', 'app', 'reference', 'app'],
+  ]
+  const rows = sp.sites.map((x) => {
+    const a = app.get(x.id)
+    return [h('span', {}, cls('place', x.name), where(x.lat, x.lon)),
+      pct(x.lit), a ? pct(a.lit) : '', `${x.longest_dark_h} h`, a ? `${a.longest_dark_h} h` : '', pct(x.comm), a ? pct(a.comm) : '']
+  })
+  // the worst differences, computed from the stored rows so the sentence cannot drift from the table
+  const pairs = sp.sites.flatMap((x) => { const a = app.get(x.id); return a ? [{ x, a }] : [] })
+  const worst = (f: (q: (typeof pairs)[number]) => number) => pairs.reduce((m, q) => (Math.abs(f(q)) > Math.abs(f(m)) ? q : m), pairs[0])
+  const wl = worst((q) => q.a.lit - q.x.lit), wd = worst((q) => q.a.longest_dark_h - q.x.longest_dark_h), wc = worst((q) => q.a.comm - q.x.comm)
+  const same = pairs.filter((q) => Math.abs(q.a.lit - q.x.lit) < 0.005 && q.a.longest_dark_h === q.x.longest_dark_h && Math.abs(q.a.comm - q.x.comm) < 0.005)
   return section('site', 'pin', 'The site panel against the reference',
-    p('When you click a point, the app\'s site panel computes the stay for that one point. We checked it against the Python reference for three sites: a 14-day stay landing on 3 November 2027, with the solar array and antenna on a 2 m mast.'),
-    table([['Site', sun('Sunlit'), sun('Longest dark'), earth('Earth contact')]], [
-      [h('span', {}, cls('place', 'Connecting ridge'), ' (89.45° S, 222.69° E)'), '81%', '57 h', '63%'],
-      [h('span', {}, cls('place', 'Malapert Massif'), ', region centre'), '24%', '174 h', '63%'],
-      [h('span', {}, cls('place', 'Mons Mouton Plateau'), ', region centre'), '56%', '149 h', '90%'],
-    ], { tones: ['', 'sun', 'sun', 'earth'] }),
-    p('The app and the reference agree to the percent and to the hour at all three.'),
+    p(`When you click a point, the app's site panel computes the stay for that one point: it traces the horizon on the GPU and runs the stay hour by hour. We compared it with the Python reference at ${sp.sites.length} sites: a ${sp.days}-day stay landing on ${date}, with the solar array and antenna on a ${sp.mast_m} m mast.`),
+    table(thead, rows, { tones: ['', 'sun', 'sun', 'sun', 'sun', 'earth', 'earth'], caption: 'Longest dark is the longest stretch with less than half of the Sun in view.' }),
+    h('p', { class: 'vresult' }, h('strong', {}, 'Our run: '),
+      `at ${same.length} of the ${pairs.length} sites the app and the reference agree within half a percentage point and to the hour. `,
+      `The largest differences are ${Math.abs((wl.a.lit - wl.x.lit) * 100).toFixed(1)} points of sunlight, ${Math.abs(wd.a.longest_dark_h - wd.x.longest_dark_h)} hours of longest dark and ${Math.abs((wc.a.comm - wc.x.comm) * 100).toFixed(1)} points of contact.`),
+    p(`What differs between the two is only the horizon: the unit tests feed the reference horizon to the app's site model and get the reference numbers back. At these sites the horizon the GPU traces differs from the reference's by no more than ${Math.max(...pairs.map((q) => q.a.horizon_mean_diff_deg)).toFixed(3)} degrees on average, and by ${Math.max(...pairs.map((q) => q.a.horizon_max_diff_deg)).toFixed(2)} degrees in any one direction.`),
+    p(cls('note', SITE_STEP_NOTE)),
   )
 }
 
 function limitsSection() {
   const items = [
-    'The 20 m terrain cannot see boulders or craters smaller than a few tens of metres. A boulder next to the lander can still shade it.',
+    'The finest terrain is 5 m per pixel, and only from 87° S to the pole; further out it is 20 m to 80° S and 240 m to 60° S. No map sees boulders or craters smaller than a few pixels. A boulder next to the lander can still shade it.',
+    'The terrain is one map with its own errors. Barker et al. 2021 give their numbers over 100 copies of the terrain with random errors; we use the map as published, so our numbers carry no error bars.',
     'There is no thermal model. The battery model is a simple energy balance: array output in, loads out.',
-    'The solar array either tracks the Sun or is fixed at an azimuth and tilt you give. The antenna has no pointing limits. Light reflected from the terrain is ignored.',
+    'The solar array either tracks the Sun or is fixed at an azimuth and tilt you give in the brief. The antenna has no pointing limits. Light reflected from the terrain is ignored, and the Sun is a disc of even brightness, without the darker edge of the real one.',
     'DSN visibility uses the IAU model of the Earth\'s rotation and a 10 degree elevation mask at the three complexes.',
-    'The map\'s horizon cache stores each angle in 10 bits: steps of 0.02 degrees near the pole, coarser where the Sun and Earth can stand higher. The site panel uses full precision.',
+    'The map\'s horizon cache stores each angle in 10 bits: steps of 0.02 degrees near the pole, coarser where the Sun and Earth can stand higher. While time plays, the map lights the ground from that cache. The site panel uses full precision.',
     'Sites north of 60° S have no terrain in the app and use a smooth-sphere horizon. The app says so.',
     'Permanent shadow is found in 12-hour steps on the map\'s own grid of points, so a shadow smaller than one of its cells can be missed. The distance to it counts only shadow inside the view.',
     'The ephemeris table runs from 2023 to 2044.',
@@ -379,9 +472,12 @@ function reproduceSection() {
     'cd pipeline',
     'python3 -m venv .venv && source .venv/bin/activate',
     'pip install -e ".[dev]"',
-    'python scripts/fetch_data.py                            # NASA source files, about 2.7 GB',
-    'python scripts/build_web_data.py dem ephem validation   # browser data',
+    'python scripts/fetch_data.py kernels adj validation     # NASA source files, about 7.3 GB',
+    'python scripts/convert_adj.py                           # decode the adjusted terrain maps',
+    'python scripts/build_web_data.py dem ephem validation   # browser data, about 2.4 GB',
     'python scripts/make_fixtures.py                         # reference answers for the 24 points',
+    'python scripts/make_test_fixtures.py                    # reference answers for the unit tests',
+    'python scripts/make_barker_fixture.py                   # the regions of Barker et al. 2021, Table 2',
     'pytest                                                  # ephemeris, Horizons (needs internet), Apollo, eclipse',
     'python scripts/validation_report.py                     # the numbers in the first section',
     '',
@@ -412,15 +508,16 @@ function reproduceSection() {
   return section('reproduce', 'terminal', 'Reproduce it',
     p('Everything on this page comes from code in the repository and NASA data you can download yourself.'),
     h('div', { class: 'vcode' }, copy, h('pre', {}, code)),
-    p('Then open ', h('a', { href: `${base}verify.html` }, 'the developer check page'), ' for the 24-point comparison with every error statistic, and ',
-      h('a', { href: `${base}verify.html?mode=goddard` }, 'the same page in Goddard mode'), ' for the long-term comparison on the full published maps.'),
+    p('Then open ', h('a', { href: `${base}verify.html` }, 'the developer check page'), ' for the 24-point comparison with every error statistic, ',
+      h('a', { href: `${base}verify.html?mode=goddard` }, 'the same page in Goddard mode'), ' for the long-term comparison on the full published maps, and ',
+      h('a', { href: `${base}verify.html?mode=barker` }, 'in Barker mode'), ' for the published table.'),
     h('h3', {}, 'Sources'),
     h('ul', { class: 'vlist vlist-quiet' },
-      h('li', {}, 'LOLA gridded elevation maps LDEM_80S_20M, LDEM_80S_40M, LDEM_80S_80M and LDEM_60S_240M, from the PDS Geosciences Node.'),
+      h('li', {}, 'NASA Goddard\'s track-adjusted LOLA maps: the 5 m map to 87° S (Barker et al. 2021, PGDA product 81, from the USGS copy) and LDEM_80S_20MPP_ADJ and LDEM_60S_240MPP_ADJ (Barker et al. 2023, PGDA product 90).'),
       h('li', {}, 'SPICE kernels from NASA NAIF: naif0012.tls, pck00011.tpc, de440s.bsp, moon_pa_de440_200625.bpc, moon_de440_250416.tf.'),
       h('li', {}, 'NASA Goddard average visibility maps AVGVISIB_85S_060M_201608 (Sun and Earth), from imbrium.mit.edu.'),
       h('li', {}, 'JPL Horizons API, used only for the check above. Apollo Lunar Surface Journal, Sun elevation table by J. Scotti. IAU/USGS Gazetteer of Planetary Nomenclature for place names.'),
-      h('li', {}, 'Mazarico et al. 2011, Icarus 211:1066. Barker et al. 2021, Planetary and Space Science 203:105119. Glaser et al. 2014, Icarus 243:78.')),
+      h('li', {}, 'Mazarico et al. 2011, Icarus 211:1066. Barker et al. 2021, Planetary and Space Science 203:105119. Barker et al. 2023, Planetary Science Journal 4:183. Glaser et al. 2014, Icarus 243:78.')),
     p(cls('muted', 'The exact addresses and file sizes are in pipeline/scripts/fetch_data.py.')),
   )
 }
@@ -444,7 +541,7 @@ function contents(sections: HTMLElement[]) {
   return nav
 }
 
-const sections = [ephemerisSection(), horizonSection(), goddardSection(), siteSection(), limitsSection(), reproduceSection()]
+const sections = [ephemerisSection(), horizonSection(), goddardSection(), barkerSection(), siteSection(), limitsSection(), reproduceSection()]
 const root = document.getElementById('root')!
 root.replaceChildren(
   header(),
