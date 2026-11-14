@@ -1,7 +1,7 @@
 // The mission brief, written as sentences with the numbers editable in place, and the map layer picker.
 // Written with AI assistance (Claude); see the README.
 import { useEffect, useState } from 'react'
-import { LAYERS, toInputDate, type Brief as BriefT, type LayerId } from '../state'
+import { LANDING_MAX_MS, LANDING_MIN_MS, LAYERS, toInputDate, type Brief as BriefT, type LayerId } from '../state'
 
 function Num(p: { value: number; onChange(v: number): void; min?: number; max?: number; step?: number; unit?: string; label: string; width?: number }) {
   // keep the text while typing; commit valid numbers as they come
@@ -35,10 +35,11 @@ export function Brief(p: { brief: BriefT; epochMs: number; onChange(b: BriefT): 
         Land on{' '}
         <input
           type="date" aria-label="Landing date (UTC)" className="date" value={toInputDate(p.epochMs + b.landing * 3600e3)}
-          min="2023-01-02" max="2044-10-01"
+          min={toInputDate(LANDING_MIN_MS)} max={toInputDate(LANDING_MAX_MS)}
           onChange={(e) => {
             const ms = Date.parse(e.target.value + 'T00:00:00Z')
-            if (Number.isFinite(ms)) p.onChange({ ...b, landing: (ms - p.epochMs) / 3600e3 })
+            // min and max do not stop typed values: a year being typed arrives as 0002, 0020, ...
+            if (Number.isFinite(ms) && ms >= LANDING_MIN_MS && ms <= LANDING_MAX_MS) p.onChange({ ...b, landing: (ms - p.epochMs) / 3600e3 })
           }}
         />{' '}
         and work for <Num label="Length of stay in days" value={b.stayDays} min={1} max={60} unit="days" onChange={(v) => p.onChange({ ...b, stayDays: Math.round(v) })} />.
