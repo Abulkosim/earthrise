@@ -6,8 +6,9 @@
 //   node scripts/e2e.mjs [--url http://localhost:5199/] [--shots out/]
 //
 // Needs Google Chrome installed and a GPU. Not run in CI (the hosted runners have no GPU).
-import { mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { mkdirSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import puppeteer from 'puppeteer-core'
 
 const arg = (name, dflt) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : dflt }
@@ -47,17 +48,36 @@ const rows = () => page.$$eval('.ribbon-row', (els) => els.map((e) => e.innerTex
 let failed = 0
 const expect = (what, ok, detail = '') => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}${detail ? `  (${detail})` : ''}`); if (!ok) failed++ }
 
-// 1. The default view: the three compared sites must show the reference numbers
-//    (14-day stay from 3 Nov 2027, 2 m mast; see pipeline/scripts/make_test_fixtures.py and the validation page).
+// 1. The default view: the three compared sites must show the reference stay summaries
+//    (14-day stay from 3 Nov 2027, 2 m mast), read from the unit-test fixture that
+//    pipeline/scripts/make_test_fixtures.py writes, so no number here is typed by hand.
+const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src')
+const ref = JSON.parse(readFileSync(join(SRC, 'model', '__fixtures__', 'reference.json'), 'utf8'))
+const catalogue = JSON.parse(readFileSync(join(SRC, 'data', 'sites.json'), 'utf8'))
+const DEFAULT_IDS = ['barker-site1-roi4', 'a3-malapert-massif', 'a3-mons-mouton-plateau'] // App.tsx, in its order
+// formatted the way the site rows do (fmtPct, fmtDuration in src/ui/Ribbon.tsx)
+const fmtPct = (f) => `${Math.round(f * 100)}%`
+const fmtDur = (h) => { const r = Math.round(h); if (r < 48) return `${r} h`; const d = Math.floor(r / 24); return r % 24 ? `${d} d ${r % 24} h` : `${d} d` }
+const parseDur = (s) => { const m = s.match(/(?:(\d+) d)?\s*(?:(\d+) h)?/); return Number(m[1] ?? 0) * 24 + Number(m[2] ?? 0) }
+/** One site row on the screen against the fixture's reference summary for that catalogue id. */
+function expectRow(id, screenRows) {
+  const fx = ref.sites.find((s) => s.id === id)
+  const name = catalogue.find((s) => s.id === id)?.name.replace(/\s*\([^)]*\)$/, '')
+  if (!fx || !name) return expect(`${id}: in the fixture and the catalogue`, false)
+  const sm = fx.summary
+  const want = [`${fmtPct(sm.lit)} sunlit`, `${fmtDur(sm.longestDarkH)} longest dark`, `${fmtPct(sm.comm)} contact`]
+  const row = screenRows.find((x) => x.includes(name)) ?? ''
+  // the screen runs the engine's float32 horizon; a value on a rounding edge may land one step over,
+  // and then the line says so: "screen: ..." instead of the row
+  const m = row.match(/(\d+)% sunlit (.+?) longest dark (\d+)% contact/)
+  const close = !!m && Math.abs(Number(m[1]) - sm.lit * 100) < 1 && Math.abs(parseDur(m[2]) - sm.longestDarkH) <= 1 &&
+    Math.abs(Number(m[3]) - sm.comm * 100) < 1
+  const exact = want.every((w) => row.includes(w))
+  expect(`${name}: ${want.join(', ')}`, exact || close, exact ? 'same on screen' : `screen: ${row.slice(0, 110)}`)
+}
 await open()
 const r = await rows()
-const want = [['Shackleton connecting ridge', '81% sunlit', '2 d 9 h longest dark', '63% contact'],
-  ['Malapert Massif', '24% sunlit', '7 d 6 h longest dark', '63% contact'],
-  ['Mons Mouton Plateau', '56% sunlit', '6 d 5 h longest dark', '90% contact']]
-for (const w of want) {
-  const row = r.find((x) => x.includes(w[0])) ?? ''
-  expect(`${w[0]}: ${w.slice(1).join(', ')}`, w.every((s) => row.includes(s)), row.slice(0, 110))
-}
+for (const id of DEFAULT_IDS) expectRow(id, r)
 const status = await page.$eval('.status', (e) => e.textContent)
 console.log('  ' + status)
 await shot('01-light-now')
@@ -83,9 +103,10 @@ expect('permanent shadow covers between 5% and 60% of the default view', psr > 0
 await shot('04-permanent-shadow')
 
 // 4. A site panel with the panorama
-await open('#c=-6000,-9000,42&layer=now&site=connecting-ridge&cmp=connecting-ridge;malapert-massif;mons-mouton-plateau')
+await open('#c=-6000,-9000,42&layer=now&site=connecting-ridge&cmp=connecting-ridge;a3-malapert-massif;a3-mons-mouton-plateau')
 const sheet = await page.$eval('.sheet', (e) => e.innerText).catch(() => '')
 expect('site panel opens for the connecting ridge from a link', /connecting ridge/i.test(sheet) && /From the lander/.test(sheet))
+expectRow('connecting-ridge', await rows())
 await shot('05-site-panel')
 
 // 5. A replay
@@ -97,9 +118,10 @@ await shot('06-replay-im2')
 
 // 6. The validation page and its Goddard check
 await page.goto(URL0 + 'validation.html', { waitUntil: 'load' })
-// the Goddard check is the last "Run this check" button on the page
+// the Goddard check is the "Run this check" button in the section whose title names Goddard
 const ran = await page.evaluate(() => {
-  const b = [...document.querySelectorAll('button')].filter((x) => /Run this check/.test(x.textContent)).at(-1)
+  const sec = [...document.querySelectorAll('section')].find((x) => /Goddard/.test(x.querySelector('h2')?.textContent ?? ''))
+  const b = [...(sec?.querySelectorAll('button') ?? [])].find((x) => /Run this check/.test(x.textContent))
   b?.click()
   return !!b
 })
