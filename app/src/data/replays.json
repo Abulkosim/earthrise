@@ -31,7 +31,7 @@
   "endUtc": "2024-02-02T00:00:00Z",
   "terrain": "smooth sphere",
   "happened": "SLIM landed on 19 January 2024 at 15:20 UTC (00:20 on 20 January in Japan), but it came to rest on its nose with its solar cells facing west, and JAXA switched it off less than three hours later. Contact came back on 28 January, once sunlight reached the cells. It went dormant as night fell at the start of February, and answered again in late February, after the night.",
-  "model": "This site is north of 60 S, so the model uses a smooth sphere. The Sun stood 37.2 degrees up in the east at landing, crossed the meridian into the western sky on 23 January at 22:10 UTC and set on 31 January at 09:40 UTC, which matches the dormancy. The model assumes an upright lander with a Sun-tracking array, so it cannot say when west-facing cells on a lander resting on its nose would start to work.",
+  "model": "This site is north of 60 S, so the model uses a smooth sphere. The Sun stood 37.2 degrees up in the east at landing, crossed the meridian into the western sky on 23 January at 22:10 UTC and set on 31 January at 09:40 UTC, which matches the dormancy. With the array set the way SLIM's ended up, fixed, upright and facing west, the model gives no power at landing, first light on the cells on 23 January at 22:20 UTC and half of full output by 26 January at 09:40 UTC. JAXA regained contact on 28 January. This replay sets the array that way.",
   "numbers": {
    "sunElevationAtLandingDeg": 37.21,
    "sunFractionAtLanding": 1.0,
@@ -45,7 +45,12 @@
    "https://www.livescience.com/space/the-moon/japans-moon-sniper-resurrected-nearly-9-days-after-losing-power-thanks-to-solar-charge",
    "https://spacepolicyonline.com/news/slim-beats-the-odds-again/",
    "https://lroc.im-ldi.com/images/1358"
-  ]
+  ],
+  "mission": {
+   "panelFixed": true,
+   "panelAz": 270,
+   "panelTilt": 90
+  }
  },
  {
   "id": "im-1-2024",

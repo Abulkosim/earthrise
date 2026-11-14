@@ -21,6 +21,8 @@ export interface Replay {
     eclipse?: { startUtc: string; maxUtc: string; endUtc: string }
   }
   sources: string[]
+  /** changes to the default lander that this replay needs, e.g. SLIM's fixed west-facing array */
+  mission?: { panelFixed?: boolean; panelAz?: number; panelTilt?: number }
 }
 
 function host(url: string): string {

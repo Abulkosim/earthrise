@@ -233,8 +233,10 @@ def model_text(m, num, c):
     if m["id"] == "slim-2024":
         return (f"This site is north of 60 S, so the model uses a smooth sphere. The Sun stood {el:.1f} degrees up "
                 f"in the east at landing, crossed the meridian into the western sky on {day(c['noon'])} and set on "
-                f"{day(c['set'])}, which matches the dormancy. The model assumes an upright lander with a Sun-tracking "
-                f"array, so it cannot say when west-facing cells on a lander resting on its nose would start to work.")
+                f"{day(c['set'])}, which matches the dormancy. With the array set the way SLIM's ended up, fixed, "
+                f"upright and facing west, the model gives no power at landing, first light on the cells on "
+                f"{day(c['panelFirst'])} and half of full output by {day(c['panelHalf'])}. JAXA regained contact on "
+                f"28 January. This replay sets the array that way.")
     if m["id"] == "im-1-2024":
         return (f"On the 20 m map the Sun stood {el:.1f} degrees up at landing and the site stayed in full sunlight "
                 f"until the model's sunset on {day(c['set'])}, {after(c['set']):.1f} days after landing, close to the "
@@ -276,6 +278,16 @@ if __name__ == "__main__":
             s = series(lat_d, lon_d, haz, hel, h0, parse(m["landingUtc"]), parse(m["endUtc"]) + timedelta(days=32), STEP_MIN)
             ctx["targetSet"] = s["t"][first_index(s["frac"] <= 0.0)]
             print(f"    IM-2 target {IM2_TARGET}: Sun {s['sel'][0]:.2f} deg, horizon {s['sh'][0]:.2f}, sunset {iso(ctx['targetSet'])}")
+        if m["id"] == "slim-2024":
+            # SLIM came to rest with its cells facing west. A fixed upright array facing azimuth 270:
+            # output share = cos(elevation) * cos(azimuth - 270), never below zero (see panelGain in the app).
+            site = sites[m["siteId"]]
+            _, haz, hel, h0 = site_horizon(site["lat"], site["lon"])
+            s = series(site["lat"], site["lon"], haz, hel, h0, parse(m["landingUtc"]), parse(m["endUtc"]), STEP_MIN)
+            gain = np.maximum(0, np.cos(np.radians(s["sel"])) * np.cos(np.radians(s["saz"] - 270.0))) * (s["frac"] > 0)
+            ctx["panelFirst"] = s["t"][first_index(gain > 0.001)]
+            ctx["panelHalf"] = s["t"][first_index(gain >= 0.5)]
+            print(f"    SLIM west-facing array: share at landing {gain[0]:.3f}, first light {iso(ctx['panelFirst'])}, half {iso(ctx['panelHalf'])}")
         if m["id"] == "blue-ghost-1-2025":
             site = sites[m["siteId"]]
             _, haz, hel, h0 = site_horizon(site["lat"], site["lon"])
@@ -289,6 +301,8 @@ if __name__ == "__main__":
         rec["model"] = model_text(m, num, ctx)
         rec["numbers"] = num
         rec["sources"] = m["sources"]
+        if m["id"] == "slim-2024":
+            rec["mission"] = {"panelFixed": True, "panelAz": 270, "panelTilt": 90}
         out.append(rec)
         print(m["id"], terrain, json.dumps(num))
         print("   ", rec["model"])
