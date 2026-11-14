@@ -246,7 +246,10 @@ function Main({ data }: { data: DataStore }) {
     setSelected(s)
     if (s.lat <= POLAR_LIMIT) {
       const [x, y] = ll2xy(s.lat, s.lon)
-      setView((v) => ({ cx: x, cy: y, mpp: Math.min(v.mpp, 60) }))
+      // Beyond 80 S the terrain is coarse (hundreds of metres a sample): stay far enough out that
+      // the map shows landforms and not the samples themselves.
+      const floor = Math.hypot(x, y) > 300e3 ? 320 : 0
+      setView((v) => ({ cx: x, cy: y, mpp: Math.max(floor, Math.min(v.mpp, 60)) }))
     }
   }
   const pick = (lat: number, lon: number, site?: Site) => {
