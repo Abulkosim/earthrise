@@ -328,7 +328,8 @@ function Main({ data }: { data: DataStore }) {
             stopShows()
             setReplay(r)
             const t0 = data.hours(Date.parse(r.landingUtc)), t1 = data.hours(Date.parse(r.endUtc))
-            setBrief((b) => ({ ...b, landing: Math.round(t0), stayDays: Math.min(60, Math.max(1, Math.ceil((t1 - t0) / 24))) }))
+            // each replay starts from a Sun-tracking array and applies what that lander needs
+            setBrief((b) => ({ ...b, landing: Math.round(t0), stayDays: Math.min(60, Math.max(1, Math.ceil((t1 - t0) / 24))), mission: { ...b.mission, panelFixed: false, ...(r.mission ?? {}) } }))
             setNow(Math.round(t0))
             setLayer('now')
             const s = SITES.find((t) => t.id === r.siteId)
