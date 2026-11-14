@@ -20,6 +20,7 @@ void main(){
 }`
 
 const COMMON = `#version 300 es
+/*DEFINES*/
 precision highp float;
 precision highp int;
 precision highp sampler2D;
@@ -42,6 +43,25 @@ uniform float uGrowth;     // step growth per step, as a fraction of distance
 uniform float uDmax;       // how far the horizon walk goes, metres
 uniform float uFine;       // smallest step, as a fraction of the grid spacing
 
+// Height grids are float textures. Where the GPU cannot filter those (some phones), the four
+// neighbours are read and blended here instead.
+#ifdef MANUAL_BILINEAR
+float tex1(sampler2D s, vec2 uv){
+  ivec2 sz = textureSize(s, 0);
+  vec2 q = uv * vec2(sz) - 0.5;
+  ivec2 i = ivec2(floor(q));
+  vec2 f = q - vec2(i);
+  ivec2 mx = sz - 1;
+  float a = texelFetch(s, clamp(i, ivec2(0), mx), 0).r;
+  float b = texelFetch(s, clamp(i + ivec2(1, 0), ivec2(0), mx), 0).r;
+  float c = texelFetch(s, clamp(i + ivec2(0, 1), ivec2(0), mx), 0).r;
+  float d = texelFetch(s, clamp(i + ivec2(1, 1), ivec2(0), mx), 0).r;
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+#else
+float tex1(sampler2D s, vec2 uv){ return texture(s, uv).r; }
+#endif
+
 // Which grid to read at map point p, for a walk that has gone t metres.
 // 0 focus, 1 mid (80-90 S, 160 m), 2 far (60-90 S, 960 m), 3 nothing
 int levelAt(vec2 p, float t){
@@ -55,9 +75,9 @@ int levelAt(vec2 p, float t){
   return 3;
 }
 float heightL(vec2 p, int level){
-  if (level == 0) return texture(uFocus, vec2(p.x - uFocusRect.x, uFocusRect.y - p.y) / uFocusRect.z).r;
-  if (level == 1) return texture(uMid, vec2(p.x + MID_HALF, MID_HALF - p.y) / (2.0 * MID_HALF)).r;
-  if (level == 2) return texture(uFar, vec2(p.x + FAR_HALF, FAR_HALF - p.y) / (2.0 * FAR_HALF)).r;
+  if (level == 0) return tex1(uFocus, vec2(p.x - uFocusRect.x, uFocusRect.y - p.y) / uFocusRect.z);
+  if (level == 1) return tex1(uMid, vec2(p.x + MID_HALF, MID_HALF - p.y) / (2.0 * MID_HALF));
+  if (level == 2) return tex1(uFar, vec2(p.x + FAR_HALF, FAR_HALF - p.y) / (2.0 * FAR_HALF));
   return -20000.0;
 }
 float resL(int level){ return level == 0 ? uFocusRes : (level == 1 ? MID_RES : FAR_RES); }
