@@ -22,6 +22,8 @@ const browser = await puppeteer.launch({
   defaultViewport: { width: 1920, height: 1080, deviceScaleFactor: 1 },
 })
 const page = await browser.newPage()
+// the first-visit introduction would cover the map note the checks read
+await page.evaluateOnNewDocument(() => { try { localStorage.setItem('earthrise-intro', 'seen') } catch { /* about:blank has no storage */ } })
 const errors = []
 page.on('pageerror', (e) => errors.push(String(e)))
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
