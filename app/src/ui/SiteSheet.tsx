@@ -1,7 +1,7 @@
 // Everything about one site: what the lander sees now, and how the stay goes.
 // Written with AI assistance (Claude); see the README.
-import { hoursToChange, summarize } from '../model/sitecalc'
-import type { Horizon, Site, SiteSeries } from '../model/types'
+import { hoursToChange } from '../model/sitecalc'
+import type { Horizon, Site, SiteSeries, SiteSummary } from '../model/types'
 import { fmtDate, fmtDateTime, fmtDur, fmtLat, fmtLon, fmtPct, type Brief } from '../state'
 import { Panorama } from './Panorama'
 
@@ -14,6 +14,7 @@ interface Props {
   site: Site
   horizon: Horizon | null
   series: SiteSeries | null
+  summary: SiteSummary | null // the stay, from landing to its end
   now: number
   brief: Brief
   epochMs: number
@@ -29,7 +30,7 @@ export function SiteSheet(p: Props) {
   const ki = Math.round(k)
   const k0 = s ? Math.max(0, Math.round((b.landing - s.t0) / s.dt)) : 0
   const k1 = s ? Math.min(s.n, k0 + Math.round((b.stayDays * 24) / s.dt)) : 0
-  const sum = s && k1 > k0 ? summarize(s, b.mission, k0, k1) : null
+  const sum = p.summary
 
   let sunLine = '', earthLine = '', stationLine = ''
   if (s) {

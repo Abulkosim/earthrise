@@ -49,20 +49,25 @@ export class Engine {
   private pfocus: Focus | null = null
   private pfocusKey = ''
   growth = 0.012
+  elMax = G.EL_MAX // top of the stored horizon range for the current bake, degrees
   fine = 0.25 // smallest step as a share of the grid spacing; 0.25 is the setting the checks were run with
   dmax = 400e3
   baked = false
+  lost = false
+  onLost?: () => void
   stats = { bakeMs: 0, evalMs: 0, nowMs: 0 }
   private progs: Record<string, Prog> = {}
   private tex: Record<string, WebGLTexture> = {}
-  private fbo: WebGLFramebuffer
+  private fbo: WebGLFramebuffer       // single attachment: bake, light now, probes, readbacks
+  private fboEval: WebGLFramebuffer   // three attachments: mission evaluation only
+  private bakeJob = 0
+  private evalJob = [0, 0]
   // evaluation state: per slot (0 the map, 1 background sweeps) three sets of three textures;
   // disp[slot] is the finished result, the other two are scratch
   private state: WebGLTexture[][][] = []
   private disp = [0, 0]
   private slotSteps = [0, 0]
   private srcState: WebGLTexture[] | undefined
-  private job = 0
   private focusKey = ''
   private tile = 128
 
@@ -74,7 +79,9 @@ export class Engine {
     if (!gl.getExtension('EXT_color_buffer_float')) throw new Error('This GPU cannot render to float textures.')
     if (!gl.getExtension('OES_texture_float_linear')) throw new Error('This GPU cannot filter float textures.')
     this.gl = gl
+    canvas.addEventListener('webglcontextlost', (ev) => { ev.preventDefault(); this.lost = true; this.onLost?.() })
     this.fbo = gl.createFramebuffer()!
+    this.fboEval = gl.createFramebuffer()!
     for (const [name, fs] of Object.entries({ bake: G.FS_BAKE, probe: G.FS_PROBE, now: G.FS_NOW, eval: G.FS_EVAL, view: G.FS_VIEW }))
       this.progs[name] = this.program(fs, name)
     const m = data.manifest.dem
@@ -132,7 +139,7 @@ export class Engine {
     const f = name === 'probe' ? this.pfocus : this.focus
     const all: Record<string, number | number[] | boolean> = {
       uFocusRect: f ? [f.left, f.top, f.size, 1] : [0, 0, 1, 0], uFocusRes: f ? f.res : 160,
-      uGrowth: this.growth, uDmax: this.dmax, uFine: this.fine, ...vals,
+      uGrowth: this.growth, uDmax: this.dmax, uFine: this.fine, uElMax: this.elMax, ...vals,
     }
     for (const [k, v] of Object.entries(all)) {
       const loc = pr.u.get(k)
@@ -161,7 +168,8 @@ export class Engine {
   /** Resolves when the GPU has finished everything issued so far. (gl.finish does not wait in Chrome.) */
   private gpuDone(): Promise<void> {
     const gl = this.gl
-    const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0)!
+    const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0)
+    if (!sync || this.lost) return Promise.reject(new Error('The graphics context was lost.'))
     gl.flush()
     return new Promise((resolve) => {
       const ch = new MessageChannel()
@@ -187,7 +195,7 @@ export class Engine {
    * draw short (long draws get a GPU reset on some systems) and lets the page stay responsive.
    * setup() must bind everything the draw needs; it is called again after each wait.
    */
-  private async tiled(w: number, h: number, job: number, weight: number, setup: () => void): Promise<boolean> {
+  private async tiled(w: number, h: number, alive: () => boolean, weight: number, setup: () => void): Promise<boolean> {
     const gl = this.gl
     const T = this.tile // fixed for this pass; adapted for the next one
     let worst = 0
@@ -200,7 +208,7 @@ export class Engine {
         this.tri()
         gl.disable(gl.SCISSOR_TEST)
         await this.gpuDone()
-        if (job >= 0 && job !== this.job) return false
+        if (!alive()) return false
         worst = Math.max(worst, (performance.now() - t0) / weight)
       }
     }
@@ -217,9 +225,15 @@ export class Engine {
   }
   get mpp() { return this.view.w / this.canvas.width }
 
-  private pickLevel(span: number, cx: number, cy: number): TileLevel | null {
+  /**
+   * Finest tile level for a square of `span` metres around a centre.
+   * whole = true asks for 20 m tiles only where they cover the whole square (a map view should not
+   * mix resolutions); false accepts them when the centre is covered (a probe cares about its own
+   * surroundings, and missing tiles fall back to the coarser grids).
+   */
+  private pickLevel(span: number, cx: number, cy: number, whole = true): TileLevel | null {
     const r = Math.hypot(cx, cy)
-    const t20ok = r + span / 2 < this.data.manifest.dem.tiles.t20.max_radius_m + 20000
+    const t20ok = r + (whole ? span / 2 : 0) < this.data.manifest.dem.tiles.t20.max_radius_m
     if (span <= FOCUS_N * 20 && t20ok) return 't20'
     if (span <= FOCUS_N * 40) return 't40'
     if (span <= FOCUS_N * 80) return 't80'
@@ -310,7 +324,10 @@ export class Engine {
   // ---- horizon cache ----------------------------------------------------
   /** Compute the horizon in 360 directions for every pixel of the current view. */
   async bake(mast: number, width = 512, onProgress?: (f: number) => void): Promise<boolean> {
-    const gl = this.gl, job = ++this.job, t0 = performance.now()
+    const gl = this.gl, job = ++this.bakeJob, t0 = performance.now()
+    // a new bake supersedes every evaluation in flight
+    this.evalJob[0]++; this.evalJob[1]++
+    this.tile = Math.min(this.tile, 128)
     this.baked = false
     // width <= 0: pick the width that gives about -width pixels in total for this canvas shape
     const aspect = this.canvas.width / this.canvas.height
@@ -331,6 +348,10 @@ export class Engine {
       this.slotSteps = [0, 0]
     }
     const f = { ...this.view }
+    // The stored range must reach as high as the Sun or the Earth can stand anywhere in view:
+    // colatitude of the farthest corner, plus the Earth's 6.7 deg of libration and a margin.
+    const far = Math.hypot(Math.max(Math.abs(f.x), Math.abs(f.x + f.w)), Math.max(Math.abs(f.y), Math.abs(f.y + f.h)))
+    this.elMax = Math.max(G.EL_MAX, (2 * Math.atan(far / (2 * 1737400)) * 180) / Math.PI + 9)
     const step = (2 * Math.PI) / G.NAZ
     for (let l = 0; l < G.LAYERS; l++) {
       const setup = () => {
@@ -340,7 +361,7 @@ export class Engine {
         gl.viewport(0, 0, w, h)
         this.use('bake', { uField: [f.x, f.y, f.w, f.h], uFieldPx: [w, h], uAz0: l * 3 * step, uAzStep: step, uMast: mast })
       }
-      if (!(await this.tiled(w, h, job, 3, setup))) return false
+      if (!(await this.tiled(w, h, () => job === this.bakeJob, 3, setup))) return false
       onProgress?.((l + 1) / G.LAYERS)
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo)
@@ -358,18 +379,16 @@ export class Engine {
    */
   async evaluate(t0Hours: number, steps: number, dtHours: number, m: Mission, onProgress?: (f: number) => void, slot = 0): Promise<boolean> {
     if (!this.baked || !this.field) return false
-    const gl = this.gl, job = ++this.job, tStart = performance.now()
+    const gl = this.gl, job = ++this.evalJob[slot], tStart = performance.now()
     const [w, h] = this.fieldPx, f = this.field
     const sets = this.state[slot]
     const scratch = [0, 1, 2].filter((i) => i !== this.disp[slot])
     let src = scratch[0], dst = scratch[1]
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fboEval)
     const init = [[0, 0, 0, 0], [0, 0, m.startWh, 0], [m.startWh, 0, 0, 0]]
-    for (let i = 0; i < 3; i++) {
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, sets[src][i], 0)
-      gl.drawBuffers([gl.COLOR_ATTACHMENT0])
-      gl.clearBufferfv(gl.COLOR, 0, init[i])
-    }
+    for (let i = 0; i < 3; i++) gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, sets[src][i], 0)
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1, gl.COLOR_ATTACHMENT2])
+    for (let i = 0; i < 3; i++) gl.clearBufferfv(gl.COLOR, i, init[i])
     const buf = new Float32Array(CHUNK * 2 * 4)
     const s = new Float64Array(9)
     for (let k0 = 0; k0 < steps; k0 += CHUNK) {
@@ -385,7 +404,7 @@ export class Engine {
         gl.activeTexture(gl.TEXTURE0 + 4)
         gl.bindTexture(gl.TEXTURE_2D, this.tex.ephem)
         gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, CHUNK, 2, gl.RGBA, gl.FLOAT, buf)
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo)
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.fboEval)
         for (let i = 0; i < 3; i++) gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, to[i], 0)
         gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1, gl.COLOR_ATTACHMENT2])
         gl.viewport(0, 0, w, h)
@@ -395,10 +414,7 @@ export class Engine {
           uEarthMargin: m.earthMargin, uNeedDsn: m.needDsn, uPower: [m.arrayW, m.loadLitW, m.loadDarkW, m.batteryWh],
         })
       }
-      const ok = await this.tiled(w, h, job, 1, setup)
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo)
-      for (let i = 1; i < 3; i++) gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, null, 0)
-      gl.drawBuffers([gl.COLOR_ATTACHMENT0])
+      const ok = await this.tiled(w, h, () => job === this.evalJob[slot], 1, setup)
       if (!ok) return false
       ;[src, dst] = [dst, src]
       onProgress?.(Math.min(1, (k0 + n) / steps))
@@ -486,7 +502,7 @@ export class Engine {
     const gl = this.gl, n = points.length
     // finest tiles around the points (they should lie within a few km of each other)
     const cx = points.reduce((a, p) => a + p.x, 0) / n, cy = points.reduce((a, p) => a + p.y, 0) / n
-    const level = this.pickLevel(20000, cx, cy)
+    const level = this.pickLevel(20000, cx, cy, false)
     if (level && Math.hypot(cx, cy) < 320000) {
       const a = await this.assemble(level, cx, cy)
       if (a.key !== this.pfocusKey) {
@@ -496,7 +512,6 @@ export class Engine {
       }
       this.pfocus = a.focus
     } else this.pfocus = null
-    const job = -1 // a probe neither cancels a running bake nor is cancelled by one
     const pts = new Float32Array(n * 4)
     points.forEach((p, i) => pts.set([p.x, p.y, p.mast, 0], i * 4))
     if (this.tex.points) gl.deleteTexture(this.tex.points)
@@ -504,7 +519,8 @@ export class Engine {
     gl.bindTexture(gl.TEXTURE_2D, this.tex.points)
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, n, 1, gl.RGBA, gl.FLOAT, pts)
     const target = this.floatTex(n, naz, gl.RGBA32F, gl.NEAREST)
-    await this.tiled(n, naz, job, 1, () => {
+    // a probe neither cancels a running bake nor is cancelled by one
+    await this.tiled(n, naz, () => true, 1, () => {
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo)
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target, 0)
       gl.drawBuffers([gl.COLOR_ATTACHMENT0])

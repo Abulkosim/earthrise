@@ -1,0 +1,138 @@
+{
+ "generated": "2026-11-14",
+ "apollo": [
+  {
+   "mission": "Apollo 11",
+   "lat": 0.6875,
+   "lon": 23.4333,
+   "utc": "1969-07-20T20:17:39",
+   "recorded_deg": 10.65,
+   "ours_deg": 10.664,
+   "diff_deg": 0.014
+  },
+  {
+   "mission": "Apollo 12",
+   "lat": -3.1975,
+   "lon": -23.3856,
+   "utc": "1969-11-19T06:54:36",
+   "recorded_deg": 5.19,
+   "ours_deg": 5.189,
+   "diff_deg": -0.001
+  },
+  {
+   "mission": "Apollo 14",
+   "lat": -3.6733,
+   "lon": -17.4653,
+   "utc": "1971-02-05T09:18:13",
+   "recorded_deg": 10.36,
+   "ours_deg": 10.355,
+   "diff_deg": -0.005
+  },
+  {
+   "mission": "Apollo 15",
+   "lat": 26.1008,
+   "lon": 3.6528,
+   "utc": "1971-07-30T22:16:29",
+   "recorded_deg": 12.05,
+   "ours_deg": 12.045,
+   "diff_deg": -0.005
+  },
+  {
+   "mission": "Apollo 16",
+   "lat": -8.9914,
+   "lon": 15.5144,
+   "utc": "1972-04-21T02:23:35",
+   "recorded_deg": 14.76,
+   "ours_deg": 14.773,
+   "diff_deg": 0.013
+  },
+  {
+   "mission": "Apollo 17",
+   "lat": 20.1653,
+   "lon": 30.7658,
+   "utc": "1972-12-11T19:54:58",
+   "recorded_deg": 13.33,
+   "ours_deg": 13.347,
+   "diff_deg": 0.017
+  }
+ ],
+ "eclipse": {
+  "date": "2025-03-14",
+  "where": "Moon centre",
+  "step_s": 30,
+  "max_fraction": 1.0,
+  "max_utc": "2025-03-14T06:59:00",
+  "partial_start_utc": "2025-03-14T04:32:00",
+  "partial_end_utc": "2025-03-14T09:25:30",
+  "total_start_utc": "2025-03-14T05:46:30",
+  "total_end_utc": "2025-03-14T08:11:00",
+  "total_minutes": 145
+ },
+ "horizons_window": {
+  "start": "2027-03-01 00:00",
+  "stop": "2027-03-29 00:00",
+  "step": "6 h"
+ },
+ "horizons": [
+  {
+   "site": "near the pole",
+   "lat": -89.5,
+   "lon": 0.0,
+   "height_km": 0.0,
+   "body": "Sun",
+   "samples": 113,
+   "max_az_diff_deg": 5.060846279213696e-07,
+   "max_el_diff_deg": 5.269420991771412e-07
+  },
+  {
+   "site": "near the pole",
+   "lat": -89.5,
+   "lon": 0.0,
+   "height_km": 0.0,
+   "body": "Earth",
+   "samples": 113,
+   "max_az_diff_deg": 1.0443952625953929e-06,
+   "max_el_diff_deg": 2.6849093682557168e-05
+  },
+  {
+   "site": "86 S",
+   "lat": -86.0,
+   "lon": 0.0,
+   "height_km": 1.5,
+   "body": "Sun",
+   "samples": 113,
+   "max_az_diff_deg": 5.185903877831299e-07,
+   "max_el_diff_deg": 4.949229522321907e-07
+  },
+  {
+   "site": "86 S",
+   "lat": -86.0,
+   "lon": 0.0,
+   "height_km": 1.5,
+   "body": "Earth",
+   "samples": 113,
+   "max_az_diff_deg": 1.096032239663311e-06,
+   "max_el_diff_deg": 2.6770573883894144e-05
+  },
+  {
+   "site": "Apollo 11",
+   "lat": 0.67416,
+   "lon": 23.47314,
+   "height_km": 0.0,
+   "body": "Sun",
+   "samples": 113,
+   "max_az_diff_deg": 7.219826499753658e-07,
+   "max_el_diff_deg": 1.415773198232273e-06
+  },
+  {
+   "site": "Apollo 11",
+   "lat": 0.67416,
+   "lon": 23.47314,
+   "height_km": 0.0,
+   "body": "Earth",
+   "samples": 113,
+   "max_az_diff_deg": 8.074488130497558e-07,
+   "max_el_diff_deg": 1.4958488193883568e-05
+  }
+ ]
+}

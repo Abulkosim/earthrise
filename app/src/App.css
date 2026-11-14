@@ -9,7 +9,6 @@
   grid-template-areas: 'top top' 'left map' 'bottom bottom';
   background: var(--ground-1);
 }
-.app.with-sheet { grid-template-columns: 318px minmax(0, 1fr) 372px; grid-template-areas: 'top top top' 'left map sheet' 'bottom bottom bottom'; }
 
 h1, h2, h3, p, dl, dd, ul { margin: 0; }
 h2 { font-size: var(--t-sm); font-weight: 650; color: var(--dust-1); margin-bottom: var(--gap-2); }
@@ -75,7 +74,9 @@ button.text:hover { text-decoration-color: var(--dust-1); }
 }
 
 /* ---- site sheet ---- */
-.sheet { grid-area: sheet; overflow-y: auto; border-left: var(--rule); padding: var(--gap-4); }
+/* The sheet lies over the right edge of the map. The map keeps its size, so opening a site
+   does not throw away the horizons already traced for the view. */
+.sheet { grid-area: map; justify-self: end; width: min(372px, 100%); z-index: 3; overflow-y: auto; border-left: var(--rule); padding: var(--gap-4); background: var(--ground-1); }
 .sheet header { display: flex; align-items: baseline; justify-content: space-between; gap: var(--gap-3); }
 .sheet h2.place { font-size: var(--t-xl); font-weight: 500; line-height: 1.15; margin: 0; }
 .sheet .where { color: var(--dust-1); margin-top: var(--gap-1); }
@@ -102,7 +103,8 @@ button.text:hover { text-decoration-color: var(--dust-1); }
 .transport .clock { color: var(--dust-1); font-size: var(--t-md); font-weight: 600; min-width: 21ch; }
 
 @media (max-width: 1020px) {
-  .app, .app.with-sheet { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 56vh auto auto auto; grid-template-areas: 'top' 'map' 'bottom' 'sheet' 'left'; height: auto; }
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 56vh auto auto auto; grid-template-areas: 'top' 'map' 'bottom' 'sheet' 'left'; height: auto; }
+  .sheet { grid-area: sheet; width: auto; }
   .left { border-right: 0; border-top: var(--rule); }
   .sheet { border-left: 0; border-top: var(--rule); }
   .top { flex-wrap: wrap; }

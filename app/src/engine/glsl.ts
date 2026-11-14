@@ -32,7 +32,7 @@ const float FAR_RES = 960.0;
 const float MID_RES = 160.0;
 const float NODATA = -15000.0;
 const float EL_MIN = ${EL_MIN.toFixed(1)};
-const float EL_MAX = ${EL_MAX.toFixed(1)};
+uniform float uElMax;      // top of the stored horizon range, degrees (set per bake)
 uniform sampler2D uFar;
 uniform sampler2D uMid;
 uniform sampler2D uFocus;
@@ -61,11 +61,18 @@ float heightL(vec2 p, int level){
   return -20000.0;
 }
 float resL(int level){ return level == 0 ? uFocusRes : (level == 1 ? MID_RES : FAR_RES); }
+// The level to use when the focus grid has no data at p: the same choice levelAt makes without a focus.
+int coarseLevelAt(vec2 p, float t){
+  float m = max(abs(p.x), abs(p.y));
+  if (m < MID_HALF - 400.0 && t < 60000.0) return 1;
+  if (m < FAR_HALF - 2000.0) return 2;
+  return 3;
+}
 float groundHeight(vec2 p){
   int l = levelAt(p, 0.0);
   float h = heightL(p, l);
-  if (h < NODATA && l < 2) h = heightL(p, l + 1);
-  if (h < NODATA && l < 1) h = heightL(p, 2);
+  if (h < NODATA && l == 0) { l = coarseLevelAt(p, 0.0); h = heightL(p, l); }
+  if (h < NODATA && l == 1) h = heightL(p, 2);
   return h;
 }
 
@@ -74,6 +81,7 @@ void frame(vec2 p, out vec3 up, out vec3 east, out vec3 north){
   float rho = max(length(p), 1e-3);
   float c = 2.0 * atan(rho / (2.0 * R));        // colatitude from the south pole
   float sl = p.x / rho, cl = p.y / rho;          // sin and cos of longitude
+  if (length(p) < 1e-3) { sl = 0.0; cl = 1.0; }  // at the pole itself any longitude will do
   up = vec3(sin(c) * cl, sin(c) * sl, -cos(c));
   east = vec3(-sl, cl, 0.0);
   north = cross(up, east);
@@ -94,7 +102,8 @@ float horizonTan(vec3 up, vec3 dir, float h0, float t0){
     int l = levelAt(p, t);
     if (l == 3) break;
     float ht = heightL(p, l);
-    if (ht < NODATA) { if (l < 2) { l = l + 1; ht = heightL(p, l); } }
+    if (ht < NODATA && l == 0) { l = coarseLevelAt(p, t); if (l == 3) break; ht = heightL(p, l); }
+    if (ht < NODATA && l == 1) { l = 2; ht = heightL(p, l); }
     if (ht > NODATA) {
       float sh = sin(0.5 * th);
       float vert = (ht - h0) - (R + ht) * 2.0 * sh * sh;
@@ -118,7 +127,7 @@ uniform float uAz0;      // radians, first of the three azimuths
 uniform float uAzStep;
 uniform float uMast;
 out vec4 o;
-float enc(float tanEl){ return clamp((degrees(atan(tanEl)) - EL_MIN) / (EL_MAX - EL_MIN), 0.0, 1.0); }
+float enc(float tanEl){ return clamp((degrees(atan(tanEl)) - EL_MIN) / (uElMax - EL_MIN), 0.0, 1.0); }
 void main(){
   vec2 p = uField.xy + uField.zw * gl_FragCoord.xy / uFieldPx;
   vec3 up, east, north; frame(p, up, east, north);
@@ -202,7 +211,7 @@ float hz(float az){
   ivec2 px = ivec2(gl_FragCoord.xy);
   float v0 = texelFetch(uHorizon, ivec3(px, i0 / 3), 0)[i0 % 3];
   float v1 = texelFetch(uHorizon, ivec3(px, i1 / 3), 0)[i1 % 3];
-  return radians(EL_MIN + mix(v0, v1, f) * (EL_MAX - EL_MIN));
+  return radians(EL_MIN + mix(v0, v1, f) * (uElMax - EL_MIN));
 }
 void main(){
   ivec2 px = ivec2(gl_FragCoord.xy);
@@ -244,6 +253,8 @@ void main(){
     s2.y += lit && comm > 0.5 ? 1.0 : 0.0;
     s2.w += fs > 0.0 ? 1.0 : 0.0;
   }
+  // no terrain here (outside the 60 S grid): never counts as meeting anything
+  if (groundHeight(p) < NODATA) { s0 = vec4(0.0, 1e6, 1e6, 0.0); s1 = vec4(1e6, 1e6, 0.0, 0.0); s2 = vec4(0.0, 0.0, 1.0, 0.0); }
   o0 = s0; o1 = s1; o2 = s2;
 }`
 
@@ -307,5 +318,6 @@ void main(){
     }
     if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0 || uMRect.z <= 0.0) col = vec3(0.012) * relief;
   }
+  if (groundHeight(p) < NODATA) col = vec3(0.0);
   o = vec4(pow(col, vec3(1.0 / 2.2)), 1.0);
 }`

@@ -1,0 +1,67 @@
+/* Written with AI assistance (Claude); see the README. */
+/* The validation page: one readable column of text, tables and two map canvases. */
+
+html, body, #root { height: auto; min-height: 100%; }
+
+body { font-size: var(--t-md); line-height: 1.6; }
+
+.vpage { max-width: 72ch; margin: 0 auto; padding: var(--gap-5) var(--gap-4) 96px; }
+
+.vpage nav { margin-bottom: 40px; font-size: var(--t-sm); }
+.vpage a { color: var(--dust-1); text-decoration: underline; text-decoration-color: var(--ground-3); text-underline-offset: 3px; }
+.vpage a:hover { text-decoration-color: var(--dust-2); }
+
+.vpage h1 { font-size: var(--t-xl); font-weight: 600; line-height: 1.2; margin: 0 0 var(--gap-4); }
+.vpage h2 { font-size: var(--t-lg); font-weight: 600; margin: 56px 0 var(--gap-3); padding-top: var(--gap-4); border-top: var(--rule); }
+.vpage h3 { font-size: var(--t-md); font-weight: 600; margin: 32px 0 var(--gap-2); }
+.vpage p, .vpage ul { margin: 0 0 var(--gap-3); }
+.vpage ul { padding-left: 1.2em; }
+.vpage li { margin-bottom: var(--gap-1); }
+.vpage .lede { color: var(--dust-1); font-size: var(--t-lg); line-height: 1.5; }
+.vpage .note { color: var(--dust-2); }
+.vpage .muted { color: var(--dust-3); }
+
+.vpage .sun { color: var(--sun); }
+.vpage .earth { color: var(--earth); }
+
+/* tables */
+.vtable { overflow-x: auto; margin: var(--gap-3) 0 var(--gap-4); }
+.vpage table { border-collapse: collapse; width: 100%; font-size: var(--t-sm); }
+.vpage th, .vpage td { padding: 5px var(--gap-3) 5px 0; border-bottom: var(--rule); text-align: right; white-space: nowrap; vertical-align: baseline; }
+.vpage th:first-child, .vpage td:first-child { text-align: left; white-space: normal; }
+.vpage th { color: var(--dust-2); font-weight: 500; }
+.vpage td.left, .vpage th.left { text-align: left; }
+.vpage thead tr + tr th:first-child { text-align: right; }
+.vpage th[colspan] { text-align: center; }
+.vpage caption { caption-side: bottom; text-align: left; color: var(--dust-3); font-size: var(--t-xs); padding-top: var(--gap-2); }
+
+/* live checks */
+.vrun { margin: var(--gap-4) 0; }
+.vpage button {
+  background: var(--ground-2); border: var(--rule); border-radius: var(--radius);
+  padding: 7px 14px; cursor: pointer; font-size: var(--t-sm);
+}
+.vpage button:hover:not(:disabled) { border-color: var(--dust-3); }
+.vpage button:disabled { color: var(--dust-3); cursor: default; }
+.vstatus { margin-top: var(--gap-2); color: var(--dust-2); font-size: var(--t-sm); min-height: 1.6em; }
+.vstatus.error { color: var(--dust-1); border-left: 2px solid var(--dust-1); padding-left: var(--gap-3); }
+.vbar { height: 2px; background: var(--ground-2); margin-top: var(--gap-2); }
+.vbar > div { height: 100%; width: 0; background: var(--dust-2); }
+.vsummary { margin-top: var(--gap-3); }
+
+.vmaps { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-4); margin: var(--gap-4) 0; }
+.vmaps figure { margin: 0; }
+.vmaps canvas { display: block; width: 100%; aspect-ratio: 1; background: var(--ground-1); image-rendering: pixelated; }
+.vmaps figcaption { color: var(--dust-2); font-size: var(--t-sm); margin-top: var(--gap-2); }
+
+.vpage pre {
+  font-family: var(--font-ui); font-size: var(--t-sm); line-height: 1.7;
+  background: var(--ground-1); border-left: 2px solid var(--ground-3);
+  padding: var(--gap-3) var(--gap-4); overflow-x: auto; white-space: pre;
+}
+.vpage code { font-family: var(--font-ui); color: var(--dust-1); }
+
+@media (max-width: 520px) {
+  .vmaps { grid-template-columns: 1fr; }
+  .vpage .lede { font-size: var(--t-md); }
+}
