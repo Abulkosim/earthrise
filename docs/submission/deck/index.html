@@ -22,16 +22,16 @@
     font-weight: 200 900; font-style: italic;
   }
 
-  /* the product's tokens (app/src/tokens.css), at projector scale */
+  /* the product's tokens (app/src/index.css), at projector scale */
   :root {
     --shadow: #000000;
     --ground-1: #1c1b1a;
     --ground-3: #3a3835;
-    --dust-1: #f0ece4;
-    --dust-2: #b3aea5;
-    --dust-3: #7d7971;
-    --sun: #f3cc74;
-    --earth: #7fb6ea;
+    --dust-1: #f2eee6;
+    --dust-2: #b8b3a9;
+    --dust-3: #7f7a72;
+    --sun: #f5c96a;
+    --earth: #7db8f0;
 
     --ui: 'Archivo Deck', 'Helvetica Neue', Arial, sans-serif;
     --place: 'Source Serif Deck', Georgia, serif;
@@ -93,7 +93,8 @@
 
   /* ---- 1 title ---- */
   .s1 .map { position: absolute; inset: 0; width: 1920px; height: 1080px; object-fit: cover; }
-  .s1 .words { position: absolute; left: var(--m); top: 300px; width: 700px; }
+  .s1 .words { position: absolute; left: var(--m); top: 300px; width: 860px; }
+  .s1 .tag, .s1 .who { max-width: 700px; }
   .s1 h1 {
     font-family: var(--place); font-style: italic; font-weight: 380;
     font-size: 220px; line-height: 0.9; letter-spacing: -0.01em;
@@ -109,12 +110,15 @@
   .s2 .bleed-right { width: 1060px; object-position: 50% 50%; }
 
   /* ---- 3 every point ---- */
-  .s3 .status { position: absolute; left: var(--m); right: var(--m); top: 384px; }
-  .s3 .shot { position: absolute; left: 0; top: 448px; width: 1920px; height: 632px; object-fit: cover; object-position: 50% 30%; }
+  .s3 .band { grid-template-columns: 1fr 900px; }
+  .s3 .status { position: absolute; left: var(--m); right: var(--m); top: 304px; }
+  .s3 .shot { position: absolute; left: 0; top: 380px; width: 1920px; height: 700px; object-fit: cover; object-position: 50% 50%; }
+  .s3 .cap { position: absolute; right: var(--m); bottom: 40px; padding: 10px 20px; background: rgba(0,0,0,0.72); }
 
   /* ---- 4 the whole app ---- */
-  .s4 .col { width: 448px; }
-  .s4 .bleed-right { width: 1280px; }
+  .s4 .head { position: absolute; left: var(--m); right: var(--m); top: 44px; }
+  .s4 .head .lede { margin-top: 20px; font-size: var(--t-small); color: var(--dust-2); }
+  .s4 .app { position: absolute; left: 200px; top: 212px; width: 1520px; height: 855px; outline: 1px solid var(--ground-3); }
 
   /* ---- 5 when the date slips ---- */
   .s5 .cal { position: absolute; left: var(--m); right: var(--m); top: 330px; }
@@ -127,7 +131,7 @@
   .s5 .maps { position: absolute; left: var(--m); right: var(--m); top: 560px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 48px; }
   .s5 .maps img { width: 100%; height: 340px; object-fit: cover; object-position: 50% 40%; }
   .s5 figcaption { margin-top: 20px; }
-  .s5 figcaption b { font-weight: 560; }
+  .s5 figcaption { color: var(--dust-2); text-indent: -0.4em; }
 
   /* ---- 6 checked ---- */
   .s6 .col { width: 860px; }
@@ -136,6 +140,7 @@
   .s6 tr:last-child td { border-bottom: 1px solid var(--ground-3); }
   .s6 td:first-child { color: var(--dust-2); padding-right: 32px; width: 480px; }
   .s6 td:last-child { color: var(--dust-1); }
+  .s6 tr.best td { color: var(--dust-1); font-weight: 560; }
   .s6 .pair { position: absolute; right: var(--m); top: 372px; width: 792px; }
   .s6 .pair .maps { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; }
   .s6 .pair img { width: 384px; height: 384px; }
@@ -183,27 +188,27 @@
 <section class="slide s3">
   <div class="band">
     <h2>Every point at once</h2>
-    <p class="lede">Other tools check one point at a time. <span class="place" style="font-size:1.08em">Earthrise</span> traces the horizon from 265,000 points, then runs your whole mission at every one.</p>
+    <p class="lede">Other tools check one point at a time. <span class="place" style="font-size:1.08em">Earthrise</span> traces the horizon from every point in view, then runs your whole mission at each one.</p>
   </div>
-  <p class="status small quiet" data-fill="status">Horizons for 264,960 points traced in 3.2 s. Stay evaluated at every point in 0.02 s.</p>
+  <p class="status small quiet" data-fill="status">Horizons for ... points traced in ... s. Stay evaluated at every point in ... s.</p>
   <img class="shot" src="shots/s3-works.jpg" alt="">
+  <p class="cap small"><span class="place">Connecting ridge</span>, 5&nbsp;m terrain. <span class="quiet">Bright: meets the brief.</span></p>
 </section>
 
 <!-- 4 -->
 <section class="slide s4">
-  <div class="col">
+  <div class="head">
     <h2>Write the brief, read the map</h2>
-    <p class="lede">Describe the lander in sentences. The map shows where it works.</p>
-    <p class="lede">Click a point for its sky, sunset time and battery.</p>
+    <p class="lede">Describe the lander in sentences. Click any point for its sky, battery and landing odds.</p>
   </div>
-  <img class="bleed-right" src="shots/s4-app.jpg" alt="">
+  <img class="app" src="shots/s4-app.jpg" alt="">
 </section>
 
 <!-- 5 -->
 <section class="slide s5">
   <div class="band">
     <h2>When the date slips</h2>
-    <p class="lede">Land <span data-fill="dateA">3 Nov 2027</span>: <span data-fill="pctA">13%</span> of the ground in view works. Two weeks later, none of it does. A month later it works again.</p>
+    <p class="lede">Land <span data-fill="dateA">3 Nov 2027</span>: <span data-fill="pctA">...</span> of the ground in view works. Two weeks later, <span data-fill="pctB">...</span>. A month later it works again.</p>
   </div>
   <div class="cal">
     <img src="shots/s5-calendar.png" alt="">
@@ -212,11 +217,11 @@
   <div class="maps">
     <figure>
       <img src="shots/s5-map-1.jpg" alt="">
-      <figcaption class="small"><b data-fill="capDateA">Land 3 Nov 2027</b><br><span class="quiet" data-fill="noteA">13% of the ground in view meets the brief.</span></figcaption>
+      <figcaption class="small">“<span data-fill="noteA">...</span>”</figcaption>
     </figure>
     <figure>
       <img src="shots/s5-map-2.jpg" alt="">
-      <figcaption class="small"><b data-fill="capDateB">Land 17 Nov 2027</b><br><span class="quiet" data-fill="noteB">No ground in view meets the brief.</span></figcaption>
+      <figcaption class="small">“<span data-fill="noteB">...</span>”</figcaption>
     </figure>
   </div>
 </section>
@@ -225,13 +230,13 @@
 <section class="slide s6">
   <div class="col">
     <h2>Built on NASA data, checked against it</h2>
-    <p class="lede">LOLA terrain, JPL DE440.</p>
+    <p class="lede">LOLA terrain from NASA Goddard, JPL DE440.</p>
     <table>
       <tr><td>JPL Horizons</td><td>0.00003°</td></tr>
       <tr><td>Apollo landings, Sun angles</td><td>within 0.15°</td></tr>
       <tr><td>Engine against reference</td><td>0.008° at 24 points</td></tr>
-      <tr><td>NASA Goddard 18.6-year maps, correlation</td><td>0.942 <span class="sun">Sun</span><br>0.975 <span class="earth">Earth</span></td></tr>
-      <tr><td>Permanent shadow agreement</td><td>93% and 98%</td></tr>
+      <tr><td>NASA Goddard 18.6-year maps, correlation</td><td><span data-fill="corrSun">...</span> <span class="sun">Sun</span>, <span data-fill="corrEarth">...</span> <span class="earth">Earth</span></td></tr>
+      <tr class="best"><td>Barker et al. 2021, Table&nbsp;2, at 5&nbsp;m</td><td>all 42 values within the paper’s bounds</td></tr>
     </table>
   </div>
   <div class="pair">
@@ -262,12 +267,17 @@
     if (r.status) set('status', r.status)
     const parse = (note) => {
       const date = note.match(/landing on (\d+ \w+ \d{4})/)?.[1] ?? ''
-      const first = note.split('.')[0].replace(/ for a landing on .*$/, '') + '.'
+      // the note's first sentence, word for word (the second, on an empty map, is advice for the user)
+      const first = (note.match(/^.*?\d{4}\./)?.[0] ?? note).replace(/(\d+) (\w{3}) (\d{4})/, '$1\u00a0$2\u00a0$3')
       return { date, pct: note.match(/^([\d.]+%)/)?.[1], first }
     }
     const [a, b] = (r.dates ?? []).map((d) => parse(d.note))
-    if (a) { set('dateA', a.date); if (a.pct) set('pctA', a.pct); set('capDateA', `Land ${a.date}`); set('noteA', a.first) }
-    if (b) { set('capDateB', `Land ${b.date}`); set('noteB', b.first) }
+    if (a) { set('dateA', a.date); if (a.pct) set('pctA', a.pct); set('noteA', a.first) }
+    if (b) {
+      set('noteB', b.first)
+      set('pctB', b.pct ? `only ${b.pct}` : 'none of it does')
+    }
+    if (r.goddard) { set('corrSun', r.goddard.sun ? Number(r.goddard.sun).toFixed(3) : ''); set('corrEarth', r.goddard.earth ? Number(r.goddard.earth).toFixed(3) : '') }
     const ax = document.querySelector('[data-fill="axis"]')
     if (r.axis && ax) {
       ax.replaceChildren()
