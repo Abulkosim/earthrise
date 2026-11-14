@@ -452,10 +452,12 @@ export class Engine {
     const m: Mission = { ...DEFAULT_MISSION, mast, litMin: 1e-6, needDsn: false }
     if (!(await this.evaluate(0, steps, dt, m, undefined, 2))) return false
     const [w, h] = this.fieldPx, f = this.field!
-    const st = this.readState(2, 2)
+    const st = this.readState(2, 2), s0 = this.readState(0, 2)
     const inf = 1e20
     const g = new Float64Array(w * h)
-    for (let i = 0; i < w * h; i++) g[i] = st[i * 4 + 3] === 0 ? 0 : inf // lit-any count of zero: permanent shadow
+    // lit-any count of zero: permanent shadow. Pixels with no terrain (marked by the evaluation with
+    // a huge dark run) are not shadow, they are nothing.
+    for (let i = 0; i < w * h; i++) g[i] = st[i * 4 + 3] === 0 && s0[i * 4 + 1] < 1e5 ? 0 : inf
     // exact squared Euclidean distance transform (Felzenszwalb and Huttenlocher), rows then columns
     const pass = (len: number, get: (i: number) => number, set: (i: number, v: number) => void) => {
       const v = new Int32Array(len), z = new Float64Array(len + 1)
