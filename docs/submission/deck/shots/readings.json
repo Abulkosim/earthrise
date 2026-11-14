@@ -2,7 +2,7 @@
   "im2": {
     "hash": "c=77108,137993,16&t=19098&l=19098&d=3&layer=now&site=im-2-athena"
   },
-  "status": "Horizons for 138,528 points traced in 6.8 s. Stay evaluated at every point in 0.04 s.",
+  "status": "Horizons for 263,568 points traced in 11.4 s. Stay evaluated at every point in 0.03 s.",
   "note3": "14% of the ground in view meets the brief for a landing on 3 Nov 2027.",
   "dates": [
     {
@@ -49,7 +49,7 @@
     ],
     "landing": 0.20238867811501599
   },
-  "sheet": "Connecting ridge, region 4 Candidate site 89.453°S 222.851°E NASA Centre of region 4 of Barker et al. 2021 (5 m map): over 70% average sunlight at 1 m in 2024 and 2025. From the lander 9 Nov 2027 12:00 UTC Drag to turn, scroll to zoom Face the Sun Earth The whole Sun is up. It stays up past the end of the timeline. The Earth stands 5.9° above the terrain. It sets in 10 d 5 h. Canberra can see the Moon, so contact is possible. The stay 14 days from 3 Nov 2027 Sunlight 100% Longest dark 0 h Contact 77% Longest silence 3 d 3 h Power 3000 Wh lowest charge, it lasts Permanent shadow 1.8 km to the n",
+  "sheet": "Connecting ridge, region 4 Candidate site 89.453°S 222.851°E NASA Centre of region 4 of Barker et al. 2021 (5 m map): over 70% average sunlight at 1 m in 2024 and 2025. From the lander 9 Nov 2027 12:00 UTC Drag to turn, scroll to zoom Face the Sun Earth The whole Sun is up. It stays up past the end of the timeline. The Earth stands 5.9° above the terrain. It sets in 10 d 5 h. Canberra can see the Moon, so contact is possible. The stay 14 days from 3 Nov 2027 Sunlight 100% Longest dark 0 h Contact 77% Longest silence 3 d 3 h Power 3000 Wh lowest charge, it lasts Permanent shadow 1.7 km to the n",
   "row": "Connecting ridge, region 4 100% sunlit 0 h longest dark 77% contact",
-  "odds": "40%"
+  "odds": "50%"
 }
