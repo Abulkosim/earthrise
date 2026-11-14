@@ -32,6 +32,7 @@ export interface SiteSeries {
   sunEl: Float32Array      // degrees, centre of the disk
   sunRadius: Float32Array  // degrees
   sunFrac: Float32Array    // visible fraction of the Sun's disk, 0..1 (terrain and eclipses)
+  power: Float32Array      // share of the array's full output, 0..1: sunFrac for a tracking array, times the cosine of incidence for a fixed one
   earthAz: Float32Array
   earthEl: Float32Array
   earthClear: Float32Array // degrees the Earth's centre stands above the terrain horizon (negative: hidden)

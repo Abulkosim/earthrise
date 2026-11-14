@@ -71,7 +71,7 @@ The team chose the challenge, set the goal and the direction, and made the decis
 
 - The 20 m terrain cannot see boulders or craters smaller than a few tens of metres.
 - No thermal model. The battery model is a simple energy balance.
-- The lander stands upright and its solar array tracks the Sun. Light reflected from the terrain is ignored.
+- The solar array either tracks the Sun or is fixed at an azimuth and tilt you give. The antenna has no pointing limits. Light reflected from the terrain is ignored.
 - DSN visibility uses the IAU Earth rotation model and a 10° elevation mask at three complexes.
 - The map's horizon cache stores each angle in 10 bits: steps of 0.02° near the pole, coarser where the Sun and Earth can stand higher. The site panel uses full precision.
 - Sites north of 60° S have no terrain in the app and use a smooth-sphere horizon. The app says so.
