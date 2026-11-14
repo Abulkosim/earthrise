@@ -1,0 +1,52 @@
+/* Written with AI assistance (Claude); see the README. */
+.map {
+  position: relative;
+  overflow: hidden;
+  background: var(--shadow);
+  cursor: crosshair;
+  touch-action: none;
+  min-width: 0;
+  min-height: 0;
+}
+.map:focus-visible { outline-offset: -2px; }
+.map canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.map-chart { position: absolute; inset: 0; pointer-events: none; }
+
+.graticule circle, .graticule line { fill: none; stroke: var(--dust-1); stroke-opacity: 0.11; stroke-width: 1; }
+.graticule-text text { fill: var(--dust-2); fill-opacity: 0.75; font-size: 11px; }
+
+.names text {
+  fill: var(--dust-1);
+  fill-opacity: 0.8;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 3px;
+}
+
+.site { pointer-events: auto; cursor: pointer; }
+.site circle { fill: none; stroke: var(--dust-1); stroke-width: 1.5; }
+.site text { fill: var(--dust-1); font-size: 13px; paint-order: stroke; stroke: rgba(0, 0, 0, 0.6); stroke-width: 3px; }
+.site.cmp circle { stroke-width: 2.5; }
+.site.sel circle { stroke: var(--both); stroke-width: 2; }
+.site.sel text { font-size: 15px; }
+
+.toward text { fill: var(--dust-2); font-size: 11.5px; paint-order: stroke; stroke: rgba(0, 0, 0, 0.6); stroke-width: 3px; }
+.toward .sun { fill: var(--sun); }
+.toward .earth { fill: var(--earth); }
+
+.scale line { stroke: var(--dust-2); stroke-width: 1; }
+.scale text { fill: var(--dust-2); font-size: 11px; }
+
+.map-readout {
+  position: absolute;
+  left: var(--gap-3);
+  bottom: var(--gap-2);
+  margin: 0;
+  color: var(--dust-1);
+  font-size: var(--t-xs);
+  white-space: pre;
+  text-shadow: 0 0 3px #000, 0 0 3px #000;
+  pointer-events: none;
+}
+.map-error { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--gap-5); margin: 0; font-size: var(--t-md); }

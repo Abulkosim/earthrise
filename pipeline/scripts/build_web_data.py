@@ -5,7 +5,7 @@ Output (default app/public/data, not committed):
   dem/far.bin.gz          60-90 S at 960 m, one grid
   dem/mid.bin.gz          80-90 S at 160 m, one grid
   dem/t80|t40|t20/r_c.bin.gz   512 px tiles at 80, 40 and 20 m (20 m poleward of 84 S)
-  ephem.bin               hourly Sun and Earth vectors, 2024-2045, float32
+  ephem.bin               hourly Sun and Earth vectors, 2023-2045, float32
 
 Grids are int16 (height = DN * 0.5 m above 1737.4 km), each row delta-coded, then gzip.
 Coarser grids are block means of the LOLA maps.

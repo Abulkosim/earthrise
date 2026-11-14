@@ -9,7 +9,7 @@ from . import DATA_DIR, R_MOON, R_SUN_KM, R_EARTH_KM
 from .proj import enu
 
 KERNELS = ["naif0012.tls", "pck00011.tpc", "de440s.bsp", "moon_pa_de440_200625.bpc", "moon_de440_250416.tf"]
-EPOCH = "2024-01-01T00:00:00"  # UTC, start of the hourly table
+EPOCH = "2023-01-01T00:00:00"  # UTC, start of the hourly table (covers Chandrayaan-3 onward)
 
 # DSN complexes: latitude, east longitude (deg). 10 deg elevation mask.
 DSN = {"Goldstone": (35.4267, 243.1105), "Madrid": (40.4314, 355.7520), "Canberra": (-35.4014, 148.9817)}

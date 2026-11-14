@@ -52,7 +52,7 @@ export class DataStore {
   epochMs = 0
   private tiles = new Map<string, Promise<Float32Array | null>>()
   base: string
-  constructor(base = `${import.meta.env.BASE_URL}data/`) { this.base = base }
+  constructor(base: string = import.meta.env.VITE_DATA_BASE ?? `${import.meta.env.BASE_URL}data/`) { this.base = base }
 
   async init() {
     this.manifest = await (await fetch(this.base + 'manifest.json')).json()
