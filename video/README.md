@@ -11,7 +11,7 @@ Every picture is a screenshot of the running Earthrise app (no AI-generated imag
 
 ## Re-shoot and re-render (two commands)
 
-The app must be running at http://localhost:5201 (or pass `--url <address>`, or set `EARTHRISE_URL`). Chrome at
+The app must be running at http://localhost:5199 (or pass `--url <address>`, or set `EARTHRISE_URL`). Chrome at
 `/Applications/Google Chrome.app` (or set `CHROME`). Then, in this folder (`npm install` once):
 
 ```sh
@@ -46,12 +46,12 @@ panels, the 5 m terrain close-up of the connecting ridge). Two things to know wh
 
 ### The live address
 
-The closing line is the `liveLink` prop (default `"Link in the project page"`, constant `DEFAULT_LIVE_LINK` in
+The closing line is the `liveLink` prop (default `"abulkosim.github.io/earthrise"`, constant `DEFAULT_LIVE_LINK` in
 `src/timeline.ts`). To render with the real address in one command:
 
 ```sh
-npx remotion render src/index.ts EarthriseDemo out/earthrise-demo.mp4 --props='{"liveLink":"earthrise.example.org"}'
-npx remotion render src/index.ts EarthriseDemo out/earthrise-demo-nomusic.mp4 --props='{"liveLink":"earthrise.example.org","bgm":false}'
+npx remotion render src/index.ts EarthriseDemo out/earthrise-demo.mp4 --props='{"liveLink":"abulkosim.github.io/earthrise"}'
+npx remotion render src/index.ts EarthriseDemo out/earthrise-demo-nomusic.mp4 --props='{"liveLink":"abulkosim.github.io/earthrise","bgm":false}'
 ```
 
 (On Windows put the JSON in a file and pass `--props=file.json`.)
@@ -70,7 +70,7 @@ App shots cross-fade over 8 frames; each caption's words are gone before the nex
 | S6 | 0:15.70-0:18.97 | 471-568 | The landing date slips 6 h per frame (3 Nov to 30 Nov 2027): the good ground shrinks, vanishes and returns; the calendar's selected bar and the note follow | "The landing date slips: map and calendar follow" / "A 14-day stay, re-run at every point in 0.05 s" (the time is read from the app's status line at capture) | PageCam slow push |
 | S7 | 0:18.97-0:22.63 | 569-678 | The 5 m close-up of the connecting ridge: a reticle locks on the Shackleton connecting ridge marker, the site panel opens, the camera travels to the lander's-eye panorama while time runs 2 h per frame (Sun in gold, Earth in blue against the terrain) | "Click a point: what the lander sees" / "On 5 m terrain: Sun and Earth over the real horizon, with time to sunset" | fui-hud-moves · reticle-lock-on, PageCam |
 | S8 | 0:22.63-0:25.70 | 679-770 | validation.html after its Goddard check ran live in the browser: "Ours, computed in your browser" beside "NASA Goddard, published" | "Checked against JPL Horizons, Apollo and NASA Goddard" / "Reproduces Barker et al. 2021 at 5 m" / "Goddard maps: correlation 0.942 Sun, 0.976 Earth" (read from the page's live rows at capture) | scan-bracket-sweep (3 passes) |
-| S9 | 0:25.70-0:28.00 | 771-839 | True black | "Earthrise" / "Runs in a desktop browser. No install." / `liveLink` (default "Link in the project page") / "Team Earthrise · NASA Space Apps Challenge 2026" | blur-slide, hold to the end |
+| S9 | 0:25.70-0:28.00 | 771-839 | True black | "Earthrise" / "Runs in a desktop browser. No install." / `liveLink` (default "abulkosim.github.io/earthrise") / "Team Earthrise · NASA Space Apps Challenge 2026" | blur-slide, hold to the end |
 
 In captions, "Sun" is set in the app's Sun gold and "Earth" in its Earth blue; everything else is regolith grey.
 Main captions are 58 px Archivo, secondary lines 42 px; titles 76 px; nothing meant to be read is under 40 px.
@@ -155,7 +155,7 @@ no-music version (`npm run render:nomusic`).
 
 | Asset | Source | Licence |
 |---|---|---|
-| All pictures (`public/captures/*`, re-created by `npm run capture`) | Screenshots of the Earthrise app (http://localhost:5201 and its `validation.html`), headless Chrome on the GPU | The team's own work (Apache 2.0, see ../LICENSE); map data NASA LRO LOLA and JPL DE440 as credited in ../CREDITS.md |
+| All pictures (`public/captures/*`, re-created by `npm run capture`) | Screenshots of the Earthrise app (http://localhost:5199 and its `validation.html`), headless Chrome on the GPU | The team's own work (Apache 2.0, see ../LICENSE); map data NASA LRO LOLA and JPL DE440 as credited in ../CREDITS.md |
 | Archivo (variable) | `@fontsource-variable/archivo` | SIL Open Font License 1.1 |
 | Source Serif 4 (variable, italic) | `@fontsource-variable/source-serif-4` | SIL Open Font License 1.1 |
 | Music: "Cat Walk", Arulo | Mixkit, via video-shotcraft | Mixkit Stock Music Free License (free for commercial and non-commercial use, no attribution required) |

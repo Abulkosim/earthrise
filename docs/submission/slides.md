@@ -2,7 +2,7 @@
 
 Seven slides, the limit in the Project Submission Guide (title slide included).
 On-slide text is at most 30 words per slide, title included. Screenshots are
-taken from the app (live address: LIVE URL TO ADD; until it is up, a local
+taken from the app (live address: https://abulkosim.github.io/earthrise/, or a local
 run) in the default view unless a slide says otherwise. Use the app's own dark background,
 gold for the Sun and blue for the Earth; nothing else coloured. The deck is built by
 `app/scripts/deck.mjs`, which captures every screenshot and every number the slides
@@ -179,13 +179,12 @@ hour by hour; all 42 values fall on the right side of the paper's bounds.
 
 > Try it
 >
-> LIVE URL TO ADD
+> abulkosim.github.io/earthrise
 >
 > Runs in a browser, no install, no login. Open source. For mission planners,
 > teachers and anyone curious.
 
-**Visual.** The live address as an obvious placeholder (LIVE URL TO ADD,
-dashed box) beside a close crop of the panorama from slide 4: the terrain
+**Visual.** The live address beside a close crop of the panorama from slide 4: the terrain
 horizon of Connecting ridge, region 4, with the gold Sun and the blue Earth
 above it.
 

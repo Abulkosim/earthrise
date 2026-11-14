@@ -1,8 +1,8 @@
 # Speaker notes
 
 For the two presenters. One paragraph per slide, about 20 to 30 seconds each.
-Before judging: put the live address on slide 7 (search `LIVE URL TO ADD` in
-`index.html`), then rebuild from `app/` with `node scripts/deck.mjs --skip-shots`.
+The live address on slide 7 is abulkosim.github.io/earthrise. After any change to `index.html`,
+rebuild from `app/` with `node scripts/deck.mjs --skip-shots`.
 
 ## 1. Earthrise
 

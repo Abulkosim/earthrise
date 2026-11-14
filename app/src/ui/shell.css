@@ -287,8 +287,16 @@
   .collapse-button, .collapsed-pill { display: none !important; }
 }
 @media (max-width: 699.98px) {
-  .top-side, .top-side.justify-end { flex: 1 1 100%; justify-content: flex-start; }
-  .top nav { width: 100%; }
-  .top nav .find { margin-right: auto; }
+  /* a phone: the wordmark loses its pill and shares one row with the tools, so the map starts higher */
+  .top-side { flex: 0 0 auto; }
+  .top-side.justify-end { flex: 1 1 0; justify-content: flex-end; }
+  .wordmark { padding: 0 0 0 6px; background: none; border-color: transparent; box-shadow: none; }
+  .wordmark h1 { font-size: 22px; }
+  .top nav { gap: 2px; }
+  .top nav .tool { width: 32px; height: 32px; }
   .status-pill { border-radius: 14px; }
+}
+/* the narrowest phones: the demonstrations button keeps its icon and its name for screen readers */
+@media (max-width: 379.98px) {
+  .show-label { display: none; }
 }

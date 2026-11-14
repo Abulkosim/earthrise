@@ -4,8 +4,8 @@ Earthrise shows where at the Moon's south pole a lander gets sunlight and a line
 
 ## Try it
 
-- The app: LIVE URL TO ADD (the team will host it on its own server; until then, run it yourself as below)
-- Source: https://github.com/Abulkosim/earthrise (private for now)
+- The app: https://abulkosim.github.io/earthrise/ (hosted on GitHub Pages)
+- Source: https://github.com/Abulkosim/earthrise
 
 The app links to its validation page, "How we know it is right". It needs a browser with WebGL 2 and float textures. We test in Chrome and Safari.
 
