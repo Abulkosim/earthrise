@@ -1,0 +1,6 @@
+node_modules/
+out/
+public/captures/
+.capture-tmp/
+# the music is under the Mixkit licence, which does not allow passing the file on; fetch it (see README)
+public/audio/bgm-*.mp3
