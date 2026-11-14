@@ -1,27 +1,32 @@
 {
   "im2": {
-    "hash": "c=77108%2C137993%2C26.04&t=19098&l=19098&d=3&layer=now&site=im-2-athena&cmp=connecting-ridge%3Ba3-malapert-massif%3Ba3-mons-mouton-plateau",
-    "playhead": "6 Mar 2025 18:00 UTC"
+    "hash": "c=77108,137993,16&t=19098&l=19098&d=3&layer=now&site=im-2-athena"
   },
-  "status": "Horizons for 264,960 points traced in 3.2 s. Stay evaluated at every point in 0.02 s.",
-  "note3": "13% of the ground in view meets the brief for a landing on 3 Nov 2027.",
+  "status": "Horizons for 138,528 points traced in 6.8 s. Stay evaluated at every point in 0.04 s.",
+  "note3": "14% of the ground in view meets the brief for a landing on 3 Nov 2027.",
   "dates": [
     {
       "landing": 42408,
-      "note": "13% of the ground in view meets the brief for a landing on 3 Nov 2027."
+      "note": "15% of the ground in view meets the brief for a landing on 3 Nov 2027."
     },
     {
       "landing": 42744,
       "note": "No ground in view meets the brief for a landing on 17 Nov 2027. Drag the stay in the timeline to try other dates, or relax a need."
     }
   ],
-  "calendarNow": "Best day: 14% of the ground. Click a bar to land then.",
+  "calendarNow": "Ground in view that meets the brief, by landing dateBest day: 16% of the ground. Click a bar to land then.",
   "tView": 42564,
-  "pano": "Horizon panorama facing south, azimuth 189°, 150° wide. Sun 1.3° above the horizon, azimuth 189°. Earth 2.6° clear, azimuth 134°. Left and right arrow keys rotate the view.",
+  "pano": "Horizon panorama facing south, azimuth 162°, 150° wide. Sun 1.9° above the horizon, azimuth 189°. Earth 5.9° clear, azimuth 134°. Left and right arrow keys rotate the view.",
   "goddard": {
-    "sun": "0.942",
-    "earth": "0.975",
-    "psr": "Your browser: of the 55,342 points Goddard's map calls permanently shadowed, 93.1% are permanently shadowed in ours. Of the 52,783 points permanently shadowed in ours, 97.6% are permanently shadowed in theirs."
+    "verify": [
+      "sun  : 262144 points, ours 17.57% vs published 16.93% on average; bias 0.64 pts, mean abs diff 1.77 pts, rms 4.90 pts, correlation 0.9422, within 5 pts: 91.3%",
+      "earth: 262144 points, ours 31.07% vs published 30.60% on average; bias 0.47 pts, mean abs diff 1.37 pts, rms 5.17 pts, correlation 0.9757, within 5 pts: 93.9%"
+    ],
+    "sun": "0.9422",
+    "earth": "0.9757",
+    "psr": "Your browser: of the 55,342 points Goddard's map calls permanently shadowed, 93.1% are permanently shadowed in ours. Of the 52,666 points permanently shadowed in ours, 97.8% are permanently shadowed in theirs.",
+    "psrA": "93.1%",
+    "psrB": "97.8%"
   },
   "axis": {
     "months": [
@@ -31,17 +36,20 @@
       },
       {
         "text": "Nov",
-        "x": 0.18190072639225183
+        "x": 0.18250798722044728
       },
       {
         "text": "Dec",
-        "x": 0.48214285714285715
+        "x": 0.48282747603833864
       },
       {
         "text": "Jan 2028",
-        "x": 0.7920702179176755
+        "x": 0.7927316293929713
       }
     ],
-    "landing": 0.20029698849878935
-  }
+    "landing": 0.20238867811501599
+  },
+  "sheet": "Connecting ridge, region 4 Candidate site 89.453°S 222.851°E NASA Centre of region 4 of Barker et al. 2021 (5 m map): over 70% average sunlight at 1 m in 2024 and 2025. From the lander 9 Nov 2027 12:00 UTC Drag to turn, scroll to zoom Face the Sun Earth The whole Sun is up. It stays up past the end of the timeline. The Earth stands 5.9° above the terrain. It sets in 10 d 5 h. Canberra can see the Moon, so contact is possible. The stay 14 days from 3 Nov 2027 Sunlight 100% Longest dark 0 h Contact 77% Longest silence 3 d 3 h Power 3000 Wh lowest charge, it lasts Permanent shadow 1.8 km to the n",
+  "row": "Connecting ridge, region 4 100% sunlit 0 h longest dark 77% contact",
+  "odds": "40%"
 }

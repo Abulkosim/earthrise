@@ -165,3 +165,93 @@ the Malapert Massif and Mons Mouton Plateau region centres fail.
 - The repositories go public before submission.
 - The submission form on spaceappschallenge.org has to be filled in and
   submitted by a team member; the tool cannot log in. The texts are ready.
+
+### 16:57 The deck (PR #15)
+
+Seven slides, built by `deck.mjs` from screenshots of the running app, with
+the numbers read off the screen. Printed to a PDF at 1920x1080. Pitch notes
+for the presenters: the talk, the demo click by click, the numbers and the
+likely questions. The last slide keeps a placeholder for the live address.
+
+### 16:58 Fixed solar array and SLIM (PR #16)
+
+IM-1, IM-2 and SLIM all ended with their arrays pointing the wrong way, and
+the model assumed an array that tracks the Sun. The brief can now say the
+array is fixed, facing an azimuth at a tilt. Output is the visible Sun
+fraction times the cosine of the angle to the Sun, the same formula on the GPU
+and in the site model. SLIM, replayed with its cells facing west: no power at
+landing on 19 Jan 2024, first light on 23 Jan, JAXA regained contact on 28
+Jan. 30 unit tests.
+
+### 17:53 Safari (PR #17)
+
+Safari cannot be scripted without changing its settings. With `?report=<url>`
+the check page posts its result to a listener, so any browser can be checked
+by opening a link. Safari 26.6 on an Apple GPU passes the 24-point check with
+the same numbers as Chrome.
+
+### 17:59 Playback fix (PR #18)
+
+Reported by a teammate on an M2: with time playing, the map stuttered, every
+animation on the machine went jerky, and the map could hardly be dragged. The
+light picture walked the terrain for every screen pixel on every frame. Now
+the walk runs only when the view and time are at rest, for at most about 1.6
+million pixels. While time plays, the light comes from the cached horizons;
+while the map moves, the last picture is reused and refreshed coarsely. No
+heavy frame is issued before the GPU has finished the last one. Measured on a
+4484x2014 canvas: 60 frames per second while playing and panning.
+
+### 18:10 Terrain from NASA Goddard's adjusted maps
+
+The PDS polar mosaics carry errors along the laser tracks: metre-scale ridges
+that cast false shadows when the Sun grazes the ground. Checked on the
+connecting ridge against Barker et al. 2021, Table 2: on the PDS 5 m mosaic
+the longest lit period comes out near 25 days, on Goddard's adjusted map near
+220, as published.
+
+- The engine and the reference model now run on Goddard's track-adjusted maps:
+  5 m to 87 S (from the USGS copy), 20 m to 80 S, 240 m to 60 S.
+  `fetch_parallel.py` gets them from Goddard's slow server over many
+  connections; `convert_adj.py` decodes the GeoTIFFs.
+- Four nested grids: a 5 to 80 m focus, a 20 or 40 m ring around a 5 or 10 m
+  focus, 160 m, 960 m.
+- Tiles are int32 centimetres with a plane predictor. The built data is
+  2.4 GB.
+- Barker check, `verify.html?mode=barker`: 2,114 pixels at 5 m, hourly for
+  two years, at 1 m and 5 m height. All 42 values fall on the right side of
+  the paper's bounds. At 5 m height our average sunlight is 0.2 to 2.2 points
+  above their 1st percentile, longest lit period 142 to 233 days against their
+  119 to 231, longest shadow 3.9 to 6.9 days against 4.0 to 8.4.
+- 24-point check on the new terrain: horizons 0.008 degrees apart on average,
+  0.16 at most; sunlit and contact shares within 0.2 points.
+
+### 18:46 Interface rebuild (PR #19)
+
+The team lead found the first interface looked dated. Rebuilt on shadcn/ui
+(Radix), Tailwind 4 and Motion. The map fills the screen; glass panels float
+on it: a header with the layer dock, "Show me" and "Find a site" (Cmd K); a
+left panel with tabs Mission and Real landings; a site sheet with panorama,
+stat tiles and verdict; a timeline dock. Gold still means the Sun and blue the
+Earth. Engine, site model and behaviour unchanged; the hooks the end-to-end
+check and the deck use are kept. Also fixed: the field was often cut to 20,000
+to 100,000 points on a cold start. A fresh load now ends at 266,256 points in
+3.6 s on an M2 Pro.
+
+### 19:02 Landing odds, best place to land, 5 m zoom
+
+- Site sheet tile "If the landing misses": share of ground within 500 m that
+  meets the brief. IM-2 came down 250 m from its target.
+- "The best place to land" in Show me: the point in view with the most
+  workable ground around it.
+- Zoom reaches 1.5 m per pixel, which loads the 5 m terrain. The live 24-point
+  check views each point at 5 m per pixel.
+- Three of Barker's 5 m regions are in the catalogue (45 sites).
+- With the new terrain the default view and brief (landing 3 Nov 2027, 14
+  days) meet the brief on about 15% of the ground. The catalogue's
+  connecting-ridge point reads about 64% sunlit, 5 d 2 h longest dark, 61%
+  contact: it now fails the 72 h dark limit. Barker's regions, 100 to 200 m
+  away, read 75% sunlit and more.
+- Docs updated to match: README, CREDITS, method, submission form, pitch
+  notes, deploy notes.
+- Open: the end-to-end check still expects the old site numbers for the
+  three compared sites and fails those three checks; the other six pass.
