@@ -6,10 +6,10 @@ import replaysJson from './data/replays.json'
 import sitesJson from './data/sites.json'
 import { DataStore } from './engine/data'
 import type { Engine } from './engine/engine'
-import { computeSeries, landingWindows, ll2xy, sphereHorizon, summarize } from './model/sitecalc'
+import { computeSeries, landingWindows, ll2xy, sphereHorizon, summarize, xy2ll } from './model/sitecalc'
 import type { Horizon, Site } from './model/types'
 import { useStable } from '@/lib/useStable'
-import { LAYERS, defaultBrief, fmtLat, fmtLon, type Brief as BriefT, type LayerId } from './state'
+import { LAYERS, defaultBrief, fmtLat, fmtLon, needsVector, type Brief as BriefT, type LayerId } from './state'
 import { MotionConfig } from 'motion/react'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
@@ -35,6 +35,7 @@ const SITES = sitesJson as Site[]
 const FEATURES = featuresJson as Feature[]
 const REPLAYS = replaysJson as Replay[]
 const SPAN_H = 100 * 24
+const SCATTER_M = 500 // landing scatter used for the landing odds: a circle of this radius around the aim point
 const POLAR_LIMIT = -60.5 // elevation data reaches 60 S
 
 const GROUPS: [Site['kind'], string][] = [
@@ -173,6 +174,8 @@ function Main({ data }: { data: DataStore }) {
     return out
   }, [wanted, horizons, hkey, data, brief.mission, spanT0, n, k0])
   const psrOf = (s: Site): number | null => (engine && s.lat <= POLAR_LIMIT ? engine.psrDistanceAt(...ll2xy(s.lat, s.lon)) : null)
+  // share of the ground within the scatter radius of a site that meets the brief (null when unknown)
+  const oddsOf = (s: Site) => (engine && s.lat <= POLAR_LIMIT && status.pass !== null ? engine.landingOdds(...ll2xy(s.lat, s.lon), SCATTER_M, needsVector(brief), brief.needs.psrKm * 1000) : null)
   // The stay is summarised from its own series, from landing to the end of the stay,
   // so the numbers do not depend on which part of the timeline is on screen.
   const stayOf = useMemo(() => {
@@ -309,13 +312,25 @@ function Main({ data }: { data: DataStore }) {
     const s = SITES.find((t) => t.id === r.siteId)
     if (s) goTo(s)
   }
+  // "The best place to land": the point in view with the most workable ground within 500 m of it,
+  // so that a landing that misses by a few hundred metres still works.
+  const showBest = () => {
+    stopShows()
+    const b = engine?.bestPoint(needsVector(brief), brief.needs.psrKm * 1000, SCATTER_M)
+    setLayer('needs')
+    if (!b) { toast('No ground in view meets the brief for this landing date.'); return }
+    const [lat, lon] = xy2ll(b.x, b.y)
+    setSelected({ ...customSite(lat, lon), name: 'Best place to land in view' })
+    toast(`${Math.round(b.share * 100)}% of the ground within ${SCATTER_M} m of it meets the brief.`)
+  }
   // The same handlers with a fixed identity, so the memoised panels do not re-render on every
   // progress tick of the engine (a slow shell makes the map think the GPU is slow).
-  const act = useStable({ showMonth, showSlip, showRidge, stopShows, copyLink, onReplay, goTo, goToCoords, find: () => setFinding(true), openIntro: () => setIntro(true) })
+  const act = useStable({ showMonth, showSlip, showRidge, showBest, stopShows, copyLink, onReplay, goTo, goToCoords, find: () => setFinding(true), openIntro: () => setIntro(true) })
   const demos = useMemo<Demo[]>(() => [
     { title: 'A lunar month of light', explain: 'Time runs on from the landing date and the shadows turn with the Sun.', run: act.showMonth },
     { title: 'A landing date that slips', explain: 'The landing moves five weeks later, and the ground that meets the brief changes with it.', run: act.showSlip },
     { title: 'The view from the ridge', explain: 'Goes to the Shackleton connecting ridge and plays time there from the landing date.', run: act.showRidge },
+    { title: 'The best place to land', explain: 'Picks the point in view with the most workable ground around it, for this brief and landing date.', run: act.showBest },
   ], [act])
   // how far the running demonstration is, for the ring on the Stop button
   const run = useMemo<Run | null>(
@@ -362,7 +377,7 @@ function Main({ data }: { data: DataStore }) {
             {selected && (
               <SiteSheet
                 site={selected} horizon={horizons[hkey(selected)] ?? null} series={seriesOf[selected.id] ?? null}
-                summary={stayOf[selected.id] ?? null} psrM={psrOf(selected)}
+                summary={stayOf[selected.id] ?? null} psrM={psrOf(selected)} odds={oddsOf(selected)}
                 now={now} brief={brief} epochMs={data.epochMs} compared={compared.some((s) => s.id === selected.id)}
                 onCompare={() => toggleCompare(selected)} onCentre={() => goTo(selected)} onClose={() => setSelected(null)}
               />
