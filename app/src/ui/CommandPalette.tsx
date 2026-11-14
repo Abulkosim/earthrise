@@ -62,8 +62,8 @@ export const CommandPalette = memo(function CommandPalette(p: Props) {
               <CommandItem key={s.id} value={`${s.name} ${s.agency ?? ''} ${s.id}`} onSelect={() => pick(() => p.onSite(s))}>
                 <MapPin aria-hidden="true" />
                 <span className="place min-w-0 flex-1 truncate text-[15.5px] text-dust-1">{s.name}</span>
-                {s.agency && <span className="flex-none text-xs text-dust-2">{s.agency}</span>}
-                <span className="narrow w-[132px] flex-none text-right text-xs text-dust-3 tabular-nums">{fmtLat(s.lat)} {fmtLon(s.lon)}</span>
+                {s.agency && <span className="max-w-[40%] flex-none truncate text-xs text-dust-2">{s.agency}</span>}
+                <span className="narrow w-[132px] flex-none text-right text-xs text-dust-3 tabular-nums max-sm:hidden">{fmtLat(s.lat)} {fmtLon(s.lon)}</span>
               </CommandItem>
             ))}
           </CommandGroup>
