@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Earthrise engine check</title>
+    <style>
+      body { font: 13px/1.5 ui-monospace, Menlo, monospace; background: #101114; color: #d8d8d2; margin: 24px; }
+      canvas { width: 480px; height: 480px; display: block; margin: 12px 0; }
+      pre { white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>Engine check: GPU against the reference model</h1>
+    <canvas id="c" width="768" height="768"></canvas>
+    <pre id="out">loading…</pre>
+    <script type="module" src="/src/verify.ts"></script>
+  </body>
+</html>
