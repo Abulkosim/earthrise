@@ -1,9 +1,14 @@
 // Written with AI assistance (Claude); see the README.
 // Ribbon: the flight-plan time strip. One row per compared site, lanes for Sun, Earth and battery,
 // a draggable stay bracket (landing date) and a playhead (current time).
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { JSX, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
+import { createPortal } from 'react-dom'
+import { MousePointerClick, Search, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { SiteSeries, SiteSummary } from '../model/types'
+import { DockInfoSlot } from './dockSlot'
 import './Ribbon.css'
 
 export interface RibbonRow {
@@ -27,14 +32,16 @@ export interface RibbonProps {
   onSelect?(id: string): void
   onRemove?(id: string): void
   onPan?(t0: number): void
+  /** opens "Find a site", offered when no site is compared */
+  onFind?(): void
 }
 
 // lane geometry, CSS pixels
-const SUN_H = 10
-const EARTH_H = 10
-const BATT_H = 14
-const LANE_GAP = 4
-const WIN_H = 5
+const SUN_H = 9
+const EARTH_H = 9
+const BATT_H = 13
+const LANE_GAP = 3
+const WIN_H = 4
 const WIN_Y = 0
 const SUN_Y = WIN_H + LANE_GAP
 const EARTH_Y = SUN_Y + SUN_H + LANE_GAP
@@ -42,10 +49,10 @@ const BATT_Y = EARTH_Y + EARTH_H + LANE_GAP
 const LANES_H = BATT_Y + BATT_H
 
 // axis geometry, must match Ribbon.css
-const TICK_BASE = 40
-const TICK_DAY = 36
-const TICK_WEEK = 33
-const TICK_MONTH = 20
+const TICK_BASE = 36
+const TICK_DAY = 33
+const TICK_WEEK = 30
+const TICK_MONTH = 17
 
 const HOUR_MS = 3_600_000
 const DAY_MS = 24 * HOUR_MS
@@ -154,18 +161,40 @@ interface LanesProps {
   batteryWh: number
 }
 
-/** Paint runs of equal per-column values with one fill each. */
-function eachRun(cols: number, value: (c: number) => number, paint: (x0: number, x1: number, v: number) => void) {
+type Run = [x0: number, x1: number, v: number]
+
+/** Runs of equal per-column values. */
+function runsOf(cols: number, value: (c: number) => number): Run[] {
+  const out: Run[] = []
   let start = 0
   let cur = value(0)
   for (let c = 1; c <= cols; c++) {
     const v = c < cols ? value(c) : Number.NaN
     if (v !== cur) {
-      paint(start, c, cur)
+      out.push([start, c, cur])
       start = c
       cur = v
     }
   }
+  return out
+}
+
+/**
+ * Paint the non-zero runs of one lane. A stretch of light or contact gets round ends where it
+ * begins and ends, not where it only changes strength or runs off the edge of the view.
+ */
+function paintRuns(ctx: CanvasRenderingContext2D, runs: Run[], cols: number, y: number, h: number, style: (v: number) => void) {
+  runs.forEach(([x0, x1, v], i) => {
+    if (!(v > 0)) return
+    const l = x0 > 0 && (i === 0 || !(runs[i - 1][2] > 0))
+    const r = x1 < cols && (i === runs.length - 1 || !(runs[i + 1][2] > 0))
+    style(v)
+    const rad = Math.min(h / 2, (x1 - x0) / 2)
+    ctx.beginPath()
+    if ((l || r) && ctx.roundRect) ctx.roundRect(x0, y, x1 - x0, h, [l ? rad : 0, r ? rad : 0, r ? rad : 0, l ? rad : 0])
+    else ctx.rect(x0, y, x1 - x0, h)
+    ctx.fill()
+  })
 }
 
 function drawLanes(canvas: HTMLCanvasElement, o: LanesProps) {
@@ -183,10 +212,20 @@ function drawLanes(canvas: HTMLCanvasElement, o: LanesProps) {
   const css = getComputedStyle(canvas)
   const colour = (name: string) => css.getPropertyValue(name).trim()
   const sun = colour('--sun')
+  const sunDim = colour('--sun-dim')
   const earth = colour('--earth')
   const earthDim = colour('--earth-dim')
-  const dust2 = colour('--dust-2')
-  const dust3 = colour('--dust-3')
+  const fail = colour('--fail')
+  const track = colour('--lane-track') || 'rgba(255,255,255,0.04)'
+
+  // empty lanes still read as lanes
+  ctx.fillStyle = track
+  for (const [y, h] of [[SUN_Y, SUN_H], [EARTH_Y, EARTH_H], [BATT_Y, BATT_H]]) {
+    ctx.beginPath()
+    if (ctx.roundRect) ctx.roundRect(0, y * dpr, W, h * dpr, Math.min(3, h / 2) * dpr)
+    else ctx.rect(0, y * dpr, W, h * dpr)
+    ctx.fill()
+  }
 
   const s = o.series
   if (s.n === 0 || s.dt <= 0 || o.hours <= 0) return
@@ -211,60 +250,41 @@ function drawLanes(canvas: HTMLCanvasElement, o: LanesProps) {
   // Landing windows: times when a landing would meet the whole brief
   if (o.windows) {
     const win = o.windows
-    ctx.fillStyle = colour('--both')
-    eachRun(
-      W,
-      (c) => {
-        if (lo[c] < 0) return 0
-        for (let k = lo[c]; k <= hi[c]; k++) if (win[k] === 1) return 1
-        return 0
-      },
-      (x0, x1, v) => { if (v === 1) ctx.fillRect(x0, WIN_Y * dpr, x1 - x0, WIN_H * dpr) },
-    )
+    const both = colour('--both')
+    const runs = runsOf(W, (c) => {
+      if (lo[c] < 0) return 0
+      for (let k = lo[c]; k <= hi[c]; k++) if (win[k] === 1) return 1
+      return 0
+    })
+    paintRuns(ctx, runs, W, WIN_Y * dpr, WIN_H * dpr, () => { ctx.fillStyle = both })
   }
 
   // Sun: opacity follows the mean visible fraction of the disk
-  const ySun = SUN_Y * dpr
-  const hSun = SUN_H * dpr
-  ctx.fillStyle = sun
-  eachRun(
-    W,
-    (c) => {
-      if (lo[c] < 0) return 0
-      let sum = 0
-      for (let k = lo[c]; k <= hi[c]; k++) sum += s.sunFrac[k]
-      return Math.round((sum / (hi[c] - lo[c] + 1)) * 48) / 48
-    },
-    (x0, x1, a) => {
-      if (a <= 0) return
-      ctx.globalAlpha = Math.min(1, a)
-      ctx.fillRect(x0, ySun, x1 - x0, hSun)
-    },
-  )
+  const sunRuns = runsOf(W, (c) => {
+    if (lo[c] < 0) return 0
+    let sum = 0
+    for (let k = lo[c]; k <= hi[c]; k++) sum += s.sunFrac[k]
+    return Math.round((sum / (hi[c] - lo[c] + 1)) * 48) / 48
+  })
+  paintRuns(ctx, sunRuns, W, SUN_Y * dpr, SUN_H * dpr, (a) => {
+    ctx.fillStyle = sun
+    ctx.globalAlpha = Math.min(1, a)
+  })
   ctx.globalAlpha = 1
 
   // Earth: 2 contact (majority of steps), 1 in view without contact, 0 hidden
-  const yEarth = EARTH_Y * dpr
-  const hEarth = EARTH_H * dpr
-  eachRun(
-    W,
-    (c) => {
-      if (lo[c] < 0) return 0
-      let comm = 0
-      let clear = 0
-      for (let k = lo[c]; k <= hi[c]; k++) {
-        if (s.comm[k] === 1) comm++
-        if (s.earthClear[k] > 0) clear++
-      }
-      const n = hi[c] - lo[c] + 1
-      return comm * 2 >= n ? 2 : clear * 2 >= n ? 1 : 0
-    },
-    (x0, x1, v) => {
-      if (v === 0) return
-      ctx.fillStyle = v === 2 ? earth : earthDim
-      ctx.fillRect(x0, yEarth, x1 - x0, hEarth)
-    },
-  )
+  const earthRuns = runsOf(W, (c) => {
+    if (lo[c] < 0) return 0
+    let comm = 0
+    let clear = 0
+    for (let k = lo[c]; k <= hi[c]; k++) {
+      if (s.comm[k] === 1) comm++
+      if (s.earthClear[k] > 0) clear++
+    }
+    const n = hi[c] - lo[c] + 1
+    return comm * 2 >= n ? 2 : clear * 2 >= n ? 1 : 0
+  })
+  paintRuns(ctx, earthRuns, W, EARTH_Y * dpr, EARTH_H * dpr, (v) => { ctx.fillStyle = v === 2 ? earth : earthDim })
 
   // Battery: only within the stay, which is what the simulation covers
   if (o.batteryWh <= 0 || o.stayHours <= 0) return
@@ -300,8 +320,13 @@ function drawLanes(canvas: HTMLCanvasElement, o: LanesProps) {
     })
     ctx.lineTo(cFirst + tops.length, yBase)
     ctx.closePath()
-    ctx.fillStyle = dust3
+    const grad = ctx.createLinearGradient(0, yBatt, 0, yBase)
+    grad.addColorStop(0, sunDim)
+    grad.addColorStop(1, 'rgba(138, 114, 64, 0.25)')
+    ctx.fillStyle = grad
+    ctx.globalAlpha = 0.9
     ctx.fill()
+    ctx.globalAlpha = 1
 
     ctx.beginPath()
     tops.forEach((y, i) => {
@@ -310,9 +335,11 @@ function drawLanes(canvas: HTMLCanvasElement, o: LanesProps) {
       else ctx.lineTo(cFirst + i, yy)
       ctx.lineTo(cFirst + i + 1, yy)
     })
-    ctx.strokeStyle = dust2
-    ctx.lineWidth = dpr
+    ctx.strokeStyle = sun
+    ctx.lineWidth = 1.25 * dpr
+    ctx.globalAlpha = 0.85
     ctx.stroke()
+    ctx.globalAlpha = 1
   }
 
   // dead lander: hatch from the first empty step to the end of the stay
@@ -337,9 +364,9 @@ function drawLanes(canvas: HTMLCanvasElement, o: LanesProps) {
         ctx.moveTo(x, yBatt + hBatt)
         ctx.lineTo(x + hBatt, yBatt)
       }
-      ctx.strokeStyle = dust3
+      ctx.strokeStyle = fail
       ctx.lineWidth = dpr
-      ctx.globalAlpha = 0.7
+      ctx.globalAlpha = 0.5
       ctx.stroke()
       ctx.restore()
     }
@@ -358,26 +385,66 @@ const Lanes = memo(function Lanes(p: LanesProps): JSX.Element {
 
 /* ---------- readouts ---------- */
 
-function summaryParts(s: SiteSummary): string[] {
-  return [`${fmtPct(s.lit)} sunlit`, `${fmtDuration(s.longestDarkH)} longest dark`, `${fmtPct(s.comm)} contact`]
-}
+interface Reading { when: string; sun: string; sunOn: boolean; earth: string; earthOn: boolean; battery: string | null; empty: boolean }
 
-function readout(row: RibbonRow, t: number, epochMs: number, landing: number, stayHours: number): string | null {
+function readout(row: RibbonRow, t: number, epochMs: number, landing: number, stayHours: number): Reading | null {
   const s = row.series
   if (s.n === 0 || s.dt <= 0) return null
   const kf = Math.round((t - s.t0) / s.dt)
   if (kf < 0 || kf >= s.n) return null
   const tk = s.t0 + kf * s.dt
   const f = s.sunFrac[kf]
-  const parts = [
-    f < 0.005 ? 'Sun hidden' : `Sun ${Math.round(f * 100)}% visible`,
-    s.comm[kf] === 1 ? 'Earth in contact' : s.earthClear[kf] > 0 ? 'Earth in view, no contact' : 'Earth hidden',
-  ]
+  let battery: string | null = null
+  let empty = false
   if (tk >= landing && tk <= landing + stayHours) {
     const b = s.battery[kf]
-    parts.push(b <= 0 ? 'battery empty' : `battery ${fmtWh(b)} Wh`)
+    empty = b <= 0
+    battery = empty ? 'battery empty' : `battery ${fmtWh(b)} Wh`
   }
-  return `${fmtDateTime(epochMs + tk * HOUR_MS)}: ${parts.join(', ')}`
+  return {
+    when: fmtDateTime(epochMs + tk * HOUR_MS),
+    sun: f < 0.005 ? 'Sun hidden' : `Sun ${Math.round(f * 100)}% visible`,
+    sunOn: f >= 0.005,
+    earth: s.comm[kf] === 1 ? 'Earth in contact' : s.earthClear[kf] > 0 ? 'Earth in view, no contact' : 'Earth hidden',
+    earthOn: s.comm[kf] === 1,
+    battery,
+    empty,
+  }
+}
+
+/** What the lanes mean, shown in the dock's transport row while nothing is hovered. */
+function LaneLegend(): JSX.Element {
+  return (
+    <div className="lane-legend" aria-label="What the lanes show">
+      <span><i className="swatch is-land" aria-hidden="true" />Landing window</span>
+      <span><i className="swatch is-sun" aria-hidden="true" />Sun</span>
+      <span><i className="swatch is-earth" aria-hidden="true" />Earth contact, in view</span>
+      <span><i className="swatch is-battery" aria-hidden="true" />Battery</span>
+    </div>
+  )
+}
+
+function Readout({ name, r }: { name: string; r: Reading }): JSX.Element {
+  return (
+    <div className="lane-readout">
+      <span className="place">{name}</span>
+      <span className="when">{r.when}</span>
+      <span className={r.sunOn ? 'part' : 'part is-off'}><i className={r.sunOn ? 'dot dot-sun' : 'dot'} aria-hidden="true" />{r.sun}</span>
+      <span className={r.earthOn ? 'part' : 'part is-off'}><i className={r.earthOn ? 'dot dot-earth' : 'dot'} aria-hidden="true" />{r.earth}</span>
+      {r.battery && <span className="part"><i className={r.empty ? 'dot dot-fail' : 'dot dot-sun'} aria-hidden="true" />{r.battery}</span>}
+    </div>
+  )
+}
+
+/** "Malapert Massif (Artemis III region)": the place in serif, the region in quiet sans. */
+function SiteName({ name }: { name: string }): JSX.Element {
+  const m = /^(.*?)\s*(\([^)]*\))$/.exec(name)
+  if (!m) return <span className="ribbon-site-main place">{name}</span>
+  return (
+    <>
+      <span className="ribbon-site-main place">{m[1]}</span> <span className="ribbon-region">{m[2]}</span>
+    </>
+  )
 }
 
 /* ---------- the ribbon ---------- */
@@ -388,10 +455,12 @@ type Drag =
   | { mode: 'pan'; id: number; x0: number; t00: number }
 
 export function Ribbon(props: RibbonProps): JSX.Element {
-  const { rows, t0, hours, epochMs, now, landing, stayHours, batteryWh, selectedId, onSelect, onRemove } = props
+  const { rows, t0, hours, epochMs, now, landing, stayHours, batteryWh, selectedId, onSelect, onRemove, onFind } = props
+  const slot = useContext(DockInfoSlot)
 
   const axisRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<HTMLDivElement>(null)
+  const rowsRef = useRef<HTMLDivElement>(null)
   const handleRef = useRef<HTMLDivElement>(null)
   const stayRef = useRef<HTMLDivElement>(null)
   const propsRef = useRef(props)
@@ -399,6 +468,8 @@ export function Ribbon(props: RibbonProps): JSX.Element {
   const touchesRef = useRef(new Map<number, number>())
   const [width, setWidth] = useState(0)
   const [hover, setHover] = useState<{ id: string; t: number } | null>(null)
+  // which edges of the scrolling rows have more rows behind them
+  const [more, setMore] = useState({ up: false, down: false })
 
   useLayoutEffect(() => {
     propsRef.current = props
@@ -411,6 +482,23 @@ export function Ribbon(props: RibbonProps): JSX.Element {
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+
+  const measureMore = () => {
+    const el = rowsRef.current
+    if (!el) return
+    const up = el.scrollTop > 4
+    const down = el.scrollTop + el.clientHeight < el.scrollHeight - 8
+    setMore((m) => (m.up === up && m.down === down ? m : { up, down }))
+  }
+  useLayoutEffect(() => {
+    const el = rowsRef.current
+    if (!el) return
+    const ro = new ResizeObserver(measureMore)
+    ro.observe(el)
+    for (const c of el.children) ro.observe(c)
+    measureMore()
+    return () => ro.disconnect()
+  }, [rows.length])
 
   // shift+wheel or a horizontal two-finger swipe pans; a plain vertical wheel is left to the page
   useEffect(() => {
@@ -539,15 +627,23 @@ export function Ribbon(props: RibbonProps): JSX.Element {
   const endLabelW = textW('End of stay') + 6
   const landingOutside = stayLeft - landingLabelW >= 0
   const endOutside = stayRight + endLabelW <= width
+  // where the two labels go: before, inside or after the bracket; "End of stay" is left out
+  // when it would run into the landing date
+  const stayW = stayRight - stayLeft
+  const landingPos = landingOutside ? 'is-outside' : stayW >= landingLabelW + 12 ? 'is-inside' : 'is-after'
+  const endPos = landingPos === 'is-after' ? null
+    : endOutside ? 'is-outside'
+    : stayW >= (landingPos === 'is-inside' ? landingLabelW : 0) + endLabelW + 16 ? 'is-inside' : null
 
   const xNow = Math.round(xOf(now))
   const nowInView = ready && xNow >= 0 && xNow <= width
   const xHandle = clamp(xNow, 0, Math.max(0, width - 1))
   const nowText = fmtDateTime(hourMs(now))
-  const nowLabelLeft = xHandle + textW(nowText) + 12 <= width
+  const nowLabelLeft = xHandle + textW(nowText) + 18 <= width
 
   const hoverRow = hover ? rows.find((r) => r.id === hover.id) : undefined
-  const hoverText = hover && hoverRow ? readout(hoverRow, hover.t, epochMs, landing, stayHours) : null
+  const reading = hover && hoverRow ? readout(hoverRow, hover.t, epochMs, landing, stayHours) : null
+  const info = reading && hoverRow ? <Readout name={hoverRow.name} r={reading} /> : rows.length > 0 ? <LaneLegend /> : null
 
   const onLanesMove = (id: string) => (e: ReactPointerEvent<HTMLDivElement>) => {
     const r = e.currentTarget.getBoundingClientRect()
@@ -559,7 +655,10 @@ export function Ribbon(props: RibbonProps): JSX.Element {
     <div className="ribbon">
       <div className="ribbon-chart" ref={chartRef}>
         <div className="ribbon-head">
-          <div className="ribbon-utc">UTC</div>
+          <div className="ribbon-utc">
+            <span>UTC</span>
+            <span className="ribbon-hint narrow">Drag to move the landing</span>
+          </div>
           <div
             className="ribbon-axis"
             ref={axisRef}
@@ -603,12 +702,14 @@ export function Ribbon(props: RibbonProps): JSX.Element {
                 >
                   {xL >= 0 && xL <= width && <span className="ribbon-stay-cap is-start" />}
                   {xR >= 0 && xR <= width && <span className="ribbon-stay-cap is-end" />}
-                  <span className={`ribbon-stay-label is-start ${landingOutside ? 'is-outside' : 'is-inside'}`}>
+                  <span className={`ribbon-stay-label is-start ${landingPos}`}>
                     Landing <span className="ribbon-stay-date">{landingText}</span>
                   </span>
-                  <span className={`ribbon-stay-label is-end ${endOutside ? 'is-outside' : 'is-inside'}`}>
-                    End of stay
-                  </span>
+                  {endPos && (
+                    <span className={`ribbon-stay-label is-end ${endPos}`}>
+                      End of stay
+                    </span>
+                  )}
                 </div>
 
                 <div
@@ -626,7 +727,7 @@ export function Ribbon(props: RibbonProps): JSX.Element {
                 />
                 <span
                   className="ribbon-now"
-                  style={nowLabelLeft ? { left: xHandle + 10 } : { right: width - xHandle + 9 }}
+                  style={nowLabelLeft ? { left: xHandle + 11 } : { right: width - xHandle + 10 }}
                   aria-hidden="true"
                 >
                   {nowText}
@@ -636,14 +737,26 @@ export function Ribbon(props: RibbonProps): JSX.Element {
           </div>
         </div>
 
-        <div className="ribbon-rows">
+        <div
+          className="ribbon-rows" ref={rowsRef} onScroll={measureMore}
+          data-more-up={more.up} data-more-down={more.down}
+        >
           {rows.length === 0 && (
-            <div className="ribbon-row is-empty">
-              <div className="ribbon-name" />
-              <p className="ribbon-empty">Click the map or pick a site to see its Sun, Earth and battery over time.</p>
+            <div className="ribbon-empty">
+              <span className="ribbon-empty-icon" aria-hidden="true"><MousePointerClick /></span>
+              <div className="ribbon-empty-text">
+                <p className="ribbon-empty-title">No sites on the timeline yet</p>
+                <p>Click the map or pick a site to see its Sun, Earth and battery over time.</p>
+              </div>
+              {onFind && (
+                <Button type="button" variant="secondary" size="sm" className="rounded-full" onClick={onFind}>
+                  <Search aria-hidden="true" />
+                  Find a site
+                </Button>
+              )}
             </div>
           )}
-          {rows.map((row, i) => {
+          {rows.map((row) => {
             const selected = row.id === selectedId
             const s = row.summary
             return (
@@ -655,33 +768,42 @@ export function Ribbon(props: RibbonProps): JSX.Element {
                 <div className="ribbon-name">
                   <div className="ribbon-name-line">
                     {onSelect ? (
-                      <button type="button" className="ribbon-site place" aria-pressed={selected}>
-                        {row.name}
+                      <button type="button" className="ribbon-site" aria-pressed={selected} title={row.name}>
+                        <SiteName name={row.name} />
                       </button>
                     ) : (
-                      <span className="ribbon-site place">{row.name}</span>
+                      <span className="ribbon-site" title={row.name}><SiteName name={row.name} /></span>
                     )}
                     {onRemove && (
-                      <button
-                        type="button"
-                        className="ribbon-remove"
-                        aria-label={`Remove ${row.name}`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onRemove(row.id)
-                        }}
-                      >
-                        Remove
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="ribbon-remove rounded-full"
+                            aria-label={`Remove ${row.name}`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onRemove(row.id)
+                            }}
+                          >
+                            <X aria-hidden="true" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">Remove from the timeline</TooltipContent>
+                      </Tooltip>
                     )}
                   </div>
                   {s && (
                     <div className="ribbon-summary narrow">
-                      {summaryParts(s).map((t) => (
-                        <span key={t}>{t}</span>
-                      ))}
-                      {!s.survives && <span className="ribbon-dies">power runs out after {fmtDuration(s.hoursAlive)}</span>}
+                      <span><i className="dot dot-sun" aria-hidden="true" />{fmtPct(s.lit)} sunlit</span>
+                      <span><i className="dot" aria-hidden="true" />{fmtDuration(s.longestDarkH)} longest dark</span>
+                      <span><i className="dot dot-earth" aria-hidden="true" />{fmtPct(s.comm)} contact</span>
                     </div>
+                  )}
+                  {s && !s.survives && (
+                    <div className="ribbon-dies narrow"><i className="dot dot-fail" aria-hidden="true" />power runs out after {fmtDuration(s.hoursAlive)}</div>
                   )}
                 </div>
                 <div
@@ -702,14 +824,6 @@ export function Ribbon(props: RibbonProps): JSX.Element {
                         batteryWh={batteryWh}
                       />
                     )}
-                    {i === 0 && (
-                      <>
-                        <span className="ribbon-legend" style={{ top: WIN_Y - 3, height: WIN_H + 6, lineHeight: `${WIN_H + 6}px` }}>Land</span>
-                        <span className="ribbon-legend" style={{ top: SUN_Y, height: SUN_H, lineHeight: `${SUN_H}px` }}>Sun</span>
-                        <span className="ribbon-legend" style={{ top: EARTH_Y, height: EARTH_H, lineHeight: `${EARTH_H}px` }}>Earth</span>
-                        <span className="ribbon-legend" style={{ top: BATT_Y, height: BATT_H, lineHeight: `${BATT_H}px` }}>Battery</span>
-                      </>
-                    )}
                   </div>
                 </div>
               </div>
@@ -717,7 +831,7 @@ export function Ribbon(props: RibbonProps): JSX.Element {
           })}
         </div>
 
-        <div className="ribbon-overlay" aria-hidden="true">
+        <div className="ribbon-overlay" aria-hidden="true" hidden={rows.length === 0}>
           {ready && stayRight > stayLeft && (
             <div className="ribbon-band" style={{ left: stayLeft, width: stayRight - stayLeft }} />
           )}
@@ -725,13 +839,7 @@ export function Ribbon(props: RibbonProps): JSX.Element {
         </div>
       </div>
 
-      <div className="ribbon-readout">
-        {hoverText && hoverRow && (
-          <>
-            <span className="place">{hoverRow.name}</span>, {hoverText}
-          </>
-        )}
-      </div>
+      {slot ? createPortal(info, slot) : <div className="ribbon-readout">{info}</div>}
     </div>
   )
 }

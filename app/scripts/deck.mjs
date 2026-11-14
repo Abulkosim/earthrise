@@ -32,10 +32,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const LANDING_A = hrs(2027, 11, 3)  // the default brief
 const LANDING_B = hrs(2027, 11, 17) // two weeks later
 
+// The panels float over a full-screen map, so hiding them leaves the map as it is (no new trace).
 const MAP_ONLY = `
-  .top, .left, .bottom, .sheet, .map-note, .map-readout { display: none !important; }
-  .app { grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: minmax(0, 1fr) !important;
-         grid-template-areas: 'map' !important; }`
+  .top, .left, .right, .bottom, .stage, .sheet, .map-note, .map-readout { display: none !important; }`
 
 const browser = await puppeteer.launch({
   executablePath: CHROME, headless: 'new',
@@ -63,12 +62,17 @@ async function open(hash = '', { calendar = true, w = 1920, h = 1080, dsf = 1 } 
   if (await page.$('section.intro')) throw new Error('the intro box is still open')
 }
 
-/** Hide everything but the map; the canvas resizes, so wait for the horizons to be traced again. */
+/** Hide everything but the map. If that changes the size of the canvas, wait for the horizons to be traced again. */
 async function mapOnly() {
   const before = await status()
+  const size = () => page.$eval('.app > .map', (e) => `${e.clientWidth}x${e.clientHeight}`)
+  const was = await size()
   await page.addStyleTag({ content: MAP_ONLY })
-  await page.waitForFunction((p) => { const s = document.querySelector('.status')?.textContent ?? ''; return /Horizons for/.test(s) && s !== p }, { timeout: 60000 }, before)
-    .catch(() => console.log('  (status did not change after resize; continuing)'))
+  await sleep(600)
+  if ((await size()) !== was) {
+    await page.waitForFunction((p) => { const s = document.querySelector('.status')?.textContent ?? ''; return /Horizons for/.test(s) && s !== p }, { timeout: 60000 }, before)
+      .catch(() => console.log('  (status did not change after resize; continuing)'))
+  }
   await sleep(2000)
 }
 
