@@ -1,0 +1,289 @@
+<!doctype html>
+<!--
+  Earthrise pitch deck, NASA Space Apps Challenge 2026. Seven slides, 1920x1080 each.
+  Build from app/:  node scripts/deck.mjs   (captures shots/ from the running app, prints earthrise-deck.pdf)
+  Layout only:      node scripts/deck.mjs --skip-shots
+  Numbers marked data-fill are read from the app's screen at capture time (shots/readings.json).
+  The live address is a placeholder: search for LIVE URL TO ADD.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Earthrise pitch deck</title>
+<style>
+  @font-face {
+    font-family: 'Archivo Deck';
+    src: url('../../../app/node_modules/@fontsource-variable/archivo/files/archivo-latin-wdth-normal.woff2') format('woff2');
+    font-weight: 100 900; font-stretch: 62% 125%; font-style: normal;
+  }
+  @font-face {
+    font-family: 'Source Serif Deck';
+    src: url('../../../app/node_modules/@fontsource-variable/source-serif-4/files/source-serif-4-latin-opsz-italic.woff2') format('woff2');
+    font-weight: 200 900; font-style: italic;
+  }
+
+  /* the product's tokens (app/src/tokens.css), at projector scale */
+  :root {
+    --shadow: #000000;
+    --ground-1: #1c1b1a;
+    --ground-3: #3a3835;
+    --dust-1: #f0ece4;
+    --dust-2: #b3aea5;
+    --dust-3: #7d7971;
+    --sun: #f3cc74;
+    --earth: #7fb6ea;
+
+    --ui: 'Archivo Deck', 'Helvetica Neue', Arial, sans-serif;
+    --place: 'Source Serif Deck', Georgia, serif;
+
+    --t-title: 88px;
+    --t-body: 40px;
+    --t-small: 34px;
+
+    --m: 112px;      /* left and right margin */
+    --top: 104px;    /* title baseline area starts here */
+  }
+
+  @page { size: 1920px 1080px; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--shadow); }
+  body {
+    color: var(--dust-1);
+    font-family: var(--ui);
+    font-size: var(--t-body);
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums lining-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, p, table, figure { margin: 0; }
+  h2, p { text-wrap: balance; }
+  img { display: block; }
+
+  .slide {
+    position: relative;
+    width: 1920px; height: 1080px;
+    overflow: hidden;
+    background: var(--shadow);
+    break-after: page;
+  }
+  .slide:last-child { break-after: auto; }
+
+  h2 {
+    font-size: var(--t-title);
+    font-weight: 560;
+    font-stretch: 92%;
+    line-height: 1.04;
+    letter-spacing: -0.012em;
+  }
+  .lede { font-size: var(--t-body); line-height: 1.3; color: var(--dust-1); }
+  .lede + .lede { margin-top: 0.6em; }
+  .quiet { color: var(--dust-2); }
+  .small { font-size: var(--t-small); line-height: 1.3; }
+  .place { font-family: var(--place); font-style: italic; font-weight: 400; letter-spacing: 0.005em; }
+  .sun { color: var(--sun); }
+  .earth { color: var(--earth); }
+
+  /* a column of text on the left, a picture to the right running off the edges */
+  .col { position: absolute; left: var(--m); top: var(--top); }
+  .col h2 + .lede { margin-top: 44px; }
+  .bleed-right { position: absolute; right: 0; top: 0; height: 1080px; object-fit: cover; }
+
+  /* a band across the top: title on the left, words on the right */
+  .band { position: absolute; left: var(--m); right: var(--m); top: var(--top); display: grid; grid-template-columns: 1fr 808px; column-gap: 64px; align-items: start; }
+
+  /* ---- 1 title ---- */
+  .s1 .map { position: absolute; inset: 0; width: 1920px; height: 1080px; object-fit: cover; }
+  .s1 .words { position: absolute; left: var(--m); top: 300px; width: 700px; }
+  .s1 h1 {
+    font-family: var(--place); font-style: italic; font-weight: 380;
+    font-size: 220px; line-height: 0.9; letter-spacing: -0.01em;
+    margin-left: -10px;
+  }
+  .s1 .tag { margin-top: 40px; font-size: 46px; line-height: 1.22; }
+  .s1 .who { margin-top: 64px; }
+  .s1 .who p { font-size: var(--t-small); line-height: 1.35; }
+  .s1 .who p + p { margin-top: 18px; }
+
+  /* ---- 2 IM-2 ---- */
+  .s2 .col { width: 680px; }
+  .s2 .bleed-right { width: 1060px; object-position: 50% 50%; }
+
+  /* ---- 3 every point ---- */
+  .s3 .status { position: absolute; left: var(--m); right: var(--m); top: 384px; }
+  .s3 .shot { position: absolute; left: 0; top: 448px; width: 1920px; height: 632px; object-fit: cover; object-position: 50% 30%; }
+
+  /* ---- 4 the whole app ---- */
+  .s4 .col { width: 448px; }
+  .s4 .bleed-right { width: 1280px; }
+
+  /* ---- 5 when the date slips ---- */
+  .s5 .cal { position: absolute; left: var(--m); right: var(--m); top: 330px; }
+  .s5 .cal img { width: 100%; height: 132px; image-rendering: auto; }
+  .s5 .axis { position: relative; height: 56px; border-top: 1px solid var(--ground-3); }
+  .s5 .axis span { position: absolute; top: 12px; white-space: nowrap; font-size: var(--t-small); color: var(--dust-3); }
+  .s5 .axis span.mark { color: var(--dust-1); font-size: var(--t-small); }
+  .s5 .axis span.mark::before { content: ''; position: absolute; left: 0; top: -12px; width: 2px; height: 10px; background: var(--dust-1); }
+  .s5 .axis span.month::before { content: ''; position: absolute; left: 0; top: -12px; width: 1px; height: 8px; background: var(--dust-3); }
+  .s5 .maps { position: absolute; left: var(--m); right: var(--m); top: 560px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 48px; }
+  .s5 .maps img { width: 100%; height: 340px; object-fit: cover; object-position: 50% 40%; }
+  .s5 figcaption { margin-top: 20px; }
+  .s5 figcaption b { font-weight: 560; }
+
+  /* ---- 6 checked ---- */
+  .s6 .col { width: 860px; }
+  .s6 table { margin-top: 56px; border-collapse: collapse; width: 860px; font-size: var(--t-small); line-height: 1.25; }
+  .s6 td { padding: 16px 0; border-top: 1px solid var(--ground-3); vertical-align: top; }
+  .s6 tr:last-child td { border-bottom: 1px solid var(--ground-3); }
+  .s6 td:first-child { color: var(--dust-2); padding-right: 32px; width: 480px; }
+  .s6 td:last-child { color: var(--dust-1); }
+  .s6 .pair { position: absolute; right: var(--m); top: 372px; width: 792px; }
+  .s6 .pair .maps { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; }
+  .s6 .pair img { width: 384px; height: 384px; }
+  .s6 .pair figcaption { margin-top: 16px; }
+  .s6 .pair .what { margin-bottom: 24px; }
+
+  /* ---- 7 try it ---- */
+  .s7 .col { width: 820px; }
+  .s7 .url {
+    display: inline-block; margin-top: 56px; padding: 14px 24px;
+    font-size: 64px; font-weight: 560; line-height: 1.1; letter-spacing: 0.01em;
+    color: var(--dust-2); border: 3px dashed var(--dust-3);
+  }
+  .s7 .repo { margin-top: 36px; font-size: 44px; }
+  .s7 .for { margin-top: 56px; }
+  .s7 .pano { position: absolute; right: 0; top: 232px; width: 960px; }
+</style>
+</head>
+<body>
+
+<!-- 1 -->
+<section class="slide s1">
+  <img class="map" src="shots/s1-light.jpg" alt="">
+  <div class="words">
+    <h1>Earthrise</h1>
+    <p class="tag">Every landing site at the Moon’s south pole, every hour, on one map.</p>
+    <div class="who">
+      <p>Team <span class="place">Earthrise</span>, <span class="place">Tashkent</span>:<br><span class="quiet">Maria Dorofeeva, Abulkosim, Vladislav Kasev</span></p>
+      <p>NASA Space Apps 2026:<br><span class="quiet">Lunar Landing Site Navigator</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide s2">
+  <div class="col">
+    <h2>A launch slips. Where do you land now?</h2>
+    <p class="lede">Small moves in place or date decide power and radio.</p>
+    <p class="lede"><span class="place">IM-2 Athena</span> landed 250&nbsp;m off target and lasted one day.</p>
+  </div>
+  <img class="bleed-right" src="shots/s2-im2.jpg" alt="">
+</section>
+
+<!-- 3 -->
+<section class="slide s3">
+  <div class="band">
+    <h2>Every point at once</h2>
+    <p class="lede">Other tools check one point at a time. <span class="place" style="font-size:1.08em">Earthrise</span> traces the horizon from 265,000 points, then runs your whole mission at every one.</p>
+  </div>
+  <p class="status small quiet" data-fill="status">Horizons for 264,960 points traced in 3.2 s. Stay evaluated at every point in 0.02 s.</p>
+  <img class="shot" src="shots/s3-works.jpg" alt="">
+</section>
+
+<!-- 4 -->
+<section class="slide s4">
+  <div class="col">
+    <h2>Write the brief, read the map</h2>
+    <p class="lede">Describe the lander in sentences. The map shows where it works.</p>
+    <p class="lede">Click a point for its sky, sunset time and battery.</p>
+  </div>
+  <img class="bleed-right" src="shots/s4-app.jpg" alt="">
+</section>
+
+<!-- 5 -->
+<section class="slide s5">
+  <div class="band">
+    <h2>When the date slips</h2>
+    <p class="lede">Land <span data-fill="dateA">3 Nov 2027</span>: <span data-fill="pctA">13%</span> of the ground in view works. Two weeks later, none of it does. A month later it works again.</p>
+  </div>
+  <div class="cal">
+    <img src="shots/s5-calendar.png" alt="">
+    <div class="axis" data-fill="axis"></div>
+  </div>
+  <div class="maps">
+    <figure>
+      <img src="shots/s5-map-1.jpg" alt="">
+      <figcaption class="small"><b data-fill="capDateA">Land 3 Nov 2027</b><br><span class="quiet" data-fill="noteA">13% of the ground in view meets the brief.</span></figcaption>
+    </figure>
+    <figure>
+      <img src="shots/s5-map-2.jpg" alt="">
+      <figcaption class="small"><b data-fill="capDateB">Land 17 Nov 2027</b><br><span class="quiet" data-fill="noteB">No ground in view meets the brief.</span></figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide s6">
+  <div class="col">
+    <h2>Built on NASA data, checked against it</h2>
+    <p class="lede">LOLA terrain, JPL DE440.</p>
+    <table>
+      <tr><td>JPL Horizons</td><td>0.00003°</td></tr>
+      <tr><td>Apollo landings, Sun angles</td><td>within 0.15°</td></tr>
+      <tr><td>Engine against reference</td><td>0.008° at 24 points</td></tr>
+      <tr><td>NASA Goddard 18.6-year maps, correlation</td><td>0.942 <span class="sun">Sun</span><br>0.975 <span class="earth">Earth</span></td></tr>
+      <tr><td>Permanent shadow agreement</td><td>93% and 98%</td></tr>
+    </table>
+  </div>
+  <div class="pair">
+    <p class="what small quiet">Sunlight over 18.6 years, same 41&nbsp;km square</p>
+    <div class="maps">
+      <figure><img src="shots/s6-ours.png" alt=""><figcaption class="small">Ours</figcaption></figure>
+      <figure><img src="shots/s6-goddard.png" alt=""><figcaption class="small">NASA Goddard</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide s7">
+  <div class="col">
+    <h2>Try it</h2>
+    <!-- PLACEHOLDER: replace with the live address before judging, then re-render -->
+    <p class="url">LIVE URL TO ADD</p>
+    <p class="repo">github.com/Abulkosim/earthrise</p>
+    <p class="lede for quiet">Runs in a browser, no install, no login. Open source. For mission planners, teachers and anyone curious.</p>
+  </div>
+  <img class="pano" src="shots/s7-panorama.png" alt="">
+</section>
+
+<script>
+  // Called by scripts/deck.mjs with shots/readings.json: puts the numbers the app showed on the slides.
+  window.fill = (r) => {
+    const set = (k, v) => document.querySelectorAll(`[data-fill="${k}"]`).forEach((e) => { e.textContent = v })
+    if (r.status) set('status', r.status)
+    const parse = (note) => {
+      const date = note.match(/landing on (\d+ \w+ \d{4})/)?.[1] ?? ''
+      const first = note.split('.')[0].replace(/ for a landing on .*$/, '') + '.'
+      return { date, pct: note.match(/^([\d.]+%)/)?.[1], first }
+    }
+    const [a, b] = (r.dates ?? []).map((d) => parse(d.note))
+    if (a) { set('dateA', a.date); if (a.pct) set('pctA', a.pct); set('capDateA', `Land ${a.date}`); set('noteA', a.first) }
+    if (b) { set('capDateB', `Land ${b.date}`); set('noteB', b.first) }
+    const ax = document.querySelector('[data-fill="axis"]')
+    if (r.axis && ax) {
+      ax.replaceChildren()
+      const span = (cls, x, text) => { const s = document.createElement('span'); s.className = cls; s.style.left = `${(x * 100).toFixed(3)}%`; s.textContent = text; ax.append(s) }
+      // the landing dates, at the timeline's own positions (day width from the month labels)
+      const m = r.axis.months.filter((x) => x.x >= 0 && x.x <= 1)
+      const nov = m.find((x) => /^Nov/.test(x.text)), dec = m.find((x) => /^Dec/.test(x.text))
+      const perDay = nov && dec ? (dec.x - nov.x) / 30 : null
+      const marks = []
+      if (r.axis.landing != null && a) marks.push([r.axis.landing, a.date.replace(/ \d{4}$/, '')])
+      if (perDay && b && nov) marks.push([nov.x + (Number(b.date.split(' ')[0]) - 1) * perDay, b.date.replace(/ \d{4}$/, '')])
+      const busy = (x) => marks.some(([mx]) => Math.abs(mx - x) < 0.075)
+      for (const mo of m) if (!busy(mo.x) && mo.x < 0.95) span('month', mo.x, mo.text)
+      for (const [x, t] of marks) span('mark', x, t)
+    }
+  }
+</script>
+</body>
+</html>
