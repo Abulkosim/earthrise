@@ -12,6 +12,9 @@ export interface Mission {
   earthMargin: number // degrees the Earth's centre must clear the horizon
   needDsn: boolean    // also require a DSN complex with the Moon above its mask
   arrayW: number      // array output in full Sun, W
+  panelFixed: boolean // false: the array tracks the Sun; true: it is fixed to the lander
+  panelAz: number     // a fixed array faces this azimuth, degrees clockwise from north
+  panelTilt: number   // and is tilted this far from lying flat, degrees (90: upright)
   loadLitW: number    // load while lit, W
   loadDarkW: number   // load in the dark (survival heaters), W
   batteryWh: number
@@ -21,6 +24,7 @@ export const DEFAULT_MISSION: Mission = {
   mast: 2, litMin: 0.5, earthMargin: 0, needDsn: true,
   // a small polar lander: enough battery to sit out about three days of shadow
   arrayW: 450, loadLitW: 200, loadDarkW: 40, batteryWh: 3000, startWh: 3000,
+  panelFixed: false, panelAz: 0, panelTilt: 90,
 }
 
 export const METRICS = ['lit', 'longestDark', 'comm', 'longestCommGap', 'hoursAlive', 'litAndComm', 'litAny', 'psrDistance'] as const
@@ -426,6 +430,7 @@ export class Engine {
         this.use('eval', {
           uField: [f.x, f.y, f.w, f.h], uFieldPx: [w, h], uSteps: n, uDt: dtHours, uMast: m.mast, uLitMin: m.litMin,
           uEarthMargin: m.earthMargin, uNeedDsn: m.needDsn, uPower: [m.arrayW, m.loadLitW, m.loadDarkW, m.batteryWh],
+          uPanel: [m.panelFixed ? 1 : 0, (m.panelAz * Math.PI) / 180, (m.panelTilt * Math.PI) / 180],
         })
       }
       const ok = await this.tiled(w, h, () => job === this.evalJob[slot], 1, setup)

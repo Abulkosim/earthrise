@@ -45,7 +45,14 @@ export function Brief(p: { brief: BriefT; epochMs: number; onChange(b: BriefT): 
         and work for <Num label="Length of stay in days" value={b.stayDays} min={1} max={60} unit="days" onChange={(v) => p.onChange({ ...b, stayDays: Math.round(v) })} />.
       </p>
       <p>
-        The solar array gives <Num label="Array power in full Sun, watts" value={m.arrayW} min={0} max={20000} step={10} unit="W" onChange={(v) => setM('arrayW', v)} /> in
+        The solar array{' '}
+        <select className="pick" aria-label="How the solar array is mounted" value={m.panelFixed ? 'fixed' : 'track'} onChange={(e) => setM('panelFixed', e.target.value === 'fixed')}>
+          <option value="track">turns to follow the Sun</option>
+          <option value="fixed">is fixed to the lander</option>
+        </select>
+        {m.panelFixed && (<>, facing <Num label="Azimuth the array faces, degrees from north" value={m.panelAz} min={0} max={359} step={5} unit="°" onChange={(v) => setM('panelAz', v)} /> from north
+          and tilted <Num label="Tilt of the array from flat, degrees" value={m.panelTilt} min={0} max={180} step={5} unit="°" onChange={(v) => setM('panelTilt', v)} /> from flat</>)}. It
+        gives <Num label="Array power in full Sun, watts" value={m.arrayW} min={0} max={20000} step={10} unit="W" onChange={(v) => setM('arrayW', v)} /> in
         full Sun and stands <Num label="Height of array and antenna above ground, metres" value={m.mast} min={0} max={30} step={0.5} unit="m" onChange={(v) => setM('mast', v)} /> above
         the ground. The lander draws <Num label="Load while lit, watts" value={m.loadLitW} min={0} max={20000} step={10} unit="W" onChange={(v) => setM('loadLitW', v)} /> when
         lit and <Num label="Load in the dark, watts" value={m.loadDarkW} min={0} max={20000} step={5} unit="W" onChange={(v) => setM('loadDarkW', v)} /> to
