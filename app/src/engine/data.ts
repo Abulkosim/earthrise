@@ -3,7 +3,8 @@
 
 export const R_MOON = 1737400.0
 export const TILE = 512
-export const NODATA_M = -20000
+// Far below anything real, so that a bilinear blend with a valid neighbour still reads as no data.
+export const NODATA_M = -1e9
 
 export interface LevelInfo { n: number; res: number; source: string }
 export interface Manifest {
