@@ -104,6 +104,7 @@ function Main({ data }: { data: DataStore }) {
     }
     return out
   }, [wanted, horizons, hkey, data, brief.mission, spanT0, n, k0])
+  const psrOf = (s: Site): number | null => (engine && s.lat <= POLAR_LIMIT ? engine.psrDistanceAt(...ll2xy(s.lat, s.lon)) : null)
   // The stay is summarised from its own series, from landing to the end of the stay,
   // so the numbers do not depend on which part of the timeline is on screen.
   const stayOf = useMemo(() => {
@@ -116,8 +117,13 @@ function Main({ data }: { data: DataStore }) {
   }, [wanted, horizons, hkey, data, brief.mission, brief.landing, stay])
   const rows = useMemo(() => compared.filter((s) => seriesOf[s.id]).map((s) => {
     const series = seriesOf[s.id]
-    return { id: s.id, name: s.name, series, summary: stayOf[s.id], windows: landingWindows(series, brief.mission, stay, brief.needs) }
-  }), [compared, seriesOf, stayOf, brief.mission, brief.needs, stay])
+    // a site too far from permanent shadow has no landing window at all when the brief asks for it
+    const d = psrOf(s)
+    const far = brief.needs.psrKm > 0 && d !== null && d > brief.needs.psrKm * 1000
+    return { id: s.id, name: s.name, series, summary: stayOf[s.id], windows: far ? new Uint8Array(series.n) : landingWindows(series, brief.mission, stay, brief.needs) }
+    // status.pass changes when the map's long run finishes, which is when the distances appear
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [compared, seriesOf, stayOf, brief.mission, brief.needs, stay, status.pass])
 
   // play: hours of lunar time per second of wall time
   const [speed, setSpeed] = useState(12)
@@ -270,7 +276,7 @@ function Main({ data }: { data: DataStore }) {
       {selected && (
         <SiteSheet
           site={selected} horizon={horizons[hkey(selected)] ?? null} series={seriesOf[selected.id] ?? null}
-          summary={stayOf[selected.id] ?? null}
+          summary={stayOf[selected.id] ?? null} psrM={psrOf(selected)}
           now={now} brief={brief} epochMs={data.epochMs} compared={compared.some((s) => s.id === selected.id)}
           onCompare={() => toggleCompare(selected)} onCentre={() => goTo(selected)} onClose={() => setSelected(null)}
         />

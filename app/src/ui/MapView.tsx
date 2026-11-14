@@ -62,14 +62,16 @@ export function MapView(p: Props) {
     if (!e || !canvas.current || canvas.current.width < 8) return
     e.setView(q.view.cx, q.view.cy, q.view.mpp / dpr)
     const layer = LAYERS.find((l) => l.id === q.layer)!
-    if (layer.id === 'now' || !e.metricRect) {
+    if (layer.id === 'now' || !e.metricRect || (layer.slot === 2 && !e.psrDist)) {
       const busy = performance.now() - moving.current < 160
       e.renderNow(q.now, q.brief.mission.mast, busy ? 0.4 : 0.8)
       e.draw({ mode: 'now', hours: q.now })
     } else {
+      // the long-run layers show their own numbers; the brief's needs dim only the stay layers
       e.draw({
-        mode: layer.id === 'needs' ? 'needs' : 'metric', hours: q.now, metric: layer.metric as Metric,
-        range: layer.range!(q.brief), hue: HUES[layer.hue], needs: needsVector(q.brief),
+        mode: layer.id === 'needs' ? 'needs' : 'metric', hours: q.now, metric: layer.metric as Metric, slot: layer.slot ?? 0,
+        range: layer.range!(q.brief), hue: HUES[layer.hue],
+        needs: layer.slot ? [0, 1e9, 0, 0] : needsVector(q.brief), maxPsrM: layer.slot ? 0 : q.brief.needs.psrKm * 1000,
       })
     }
   }, [dpr])
@@ -84,7 +86,7 @@ export function MapView(p: Props) {
     live.current.onStatus({
       phase, progress, bakeMs: e?.stats.bakeMs ?? 0, evalMs: e?.stats.evalMs ?? 0,
       pixels: e ? e.fieldPx[0] * e.fieldPx[1] : 0,
-      pass: e && phase === 'idle' && e.metricRect ? e.passShare(needsVector(live.current.brief)) : null,
+      pass: e && phase === 'idle' && e.metricRect ? e.passShare(needsVector(live.current.brief), 0, live.current.brief.needs.psrKm * 1000) : null,
     })
   }, [])
 
@@ -106,7 +108,7 @@ export function MapView(p: Props) {
     while (c.next < days) {
       const ok = await e.evaluate(c.t0 + c.next * stepH, steps, 2, q.brief.mission, undefined, 1)
       if (!ok || cal.current !== c) return
-      c.share[c.next++] = e.passShare(needsVector(q.brief), 1)
+      c.share[c.next++] = e.passShare(needsVector(q.brief), 1, q.brief.needs.psrKm * 1000)
       if (c.next % 4 === 0 || c.next === days) live.current.onCalendar?.({ t0: c.t0, stepH, share: c.share.slice(), done: c.next })
     }
   }, [])
@@ -117,7 +119,14 @@ export function MapView(p: Props) {
     status('mission', 0)
     const steps = Math.round(q.brief.stayDays * 24)
     const ok = await e.evaluate(q.brief.landing, steps, 1, q.brief.mission)
-    if (ok) { status('idle', 1); requestFrame(); void sweep() }
+    if (!ok) return
+    status('idle', 1); requestFrame()
+    // once per bake: the 18.6-year run, for average sunlight and permanent shadow
+    if (!e.psrDist) {
+      if (!(await e.climate(q.brief.mission.mast))) return
+      status('idle', 1); requestFrame()
+    }
+    void sweep()
   }, [requestFrame, status, sweep])
 
   // Once the view rests: load the fine tiles, bake the horizons, run the mission.
@@ -214,7 +223,7 @@ export function MapView(p: Props) {
     const e = eng.current
     if (e && p.layer !== 'now') {
       const mt = e.readMetrics(x, y)
-      if (mt) text = `${fmtPct(mt.lit)} sunlit, longest dark ${Math.round(mt.longestDark)} h, ${fmtPct(mt.comm)} contact, power ${mt.hoursAlive >= p.brief.stayDays * 24 - 0.5 ? 'lasts' : `out after ${Math.round(mt.hoursAlive)} h`}`
+      if (mt) text = `${Number.isFinite(mt.psrDistance) ? (mt.psrDistance <= 0 ? 'permanent shadow, ' : `permanent shadow ${(mt.psrDistance / 1000).toFixed(1)} km away, `) : ''}${fmtPct(mt.lit)} sunlit, longest dark ${Math.round(mt.longestDark)} h, ${fmtPct(mt.comm)} contact, power ${mt.hoursAlive >= p.brief.stayDays * 24 - 0.5 ? 'lasts' : `out after ${Math.round(mt.hoursAlive)} h`}`
     }
     setHover({ lat, lon, text })
   }
