@@ -22,3 +22,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm build
+  reference:
+    runs-on: ubuntu-latest
+    env:
+      EARTHRISE_DATA: ${{ github.workspace }}/data
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -e ".[dev]"
+      - uses: actions/cache@v4
+        with:
+          path: data/kernels
+          key: spice-kernels-de440s-v1
+      - run: python scripts/fetch_data.py kernels
+      - run: pytest -q -m "not data"
