@@ -256,3 +256,33 @@ to 100,000 points on a cold start. A fresh load now ends at 266,256 points in
   notes, deploy notes.
 - Open: the end-to-end check still expects the old site numbers for the
   three compared sites and fails those three checks; the other six pass.
+
+### 19:15 to 20:10 — interface walk-through, merge of the terrain work
+
+- The team lead reported the "Link copied" toast collapsing to one letter per
+  line. Instead of fixing that one thing, a script walked every state of the
+  interface (menus, site sheet, replays, layers, playback, the validation
+  page) at 390, 820, 1100, 1280, 1440 and 1920 px, took screenshots and ran
+  layout checks in the page (text cut by its box, boxes off screen, panels
+  overlapping). Every screenshot was read by eye.
+- Fixed from that (PR #20): the toast; site names on the map covering each
+  other or leaving the screen; Sun and Earth labels crossed by their own
+  paths in the horizon view; site names cut to a few letters on a phone
+  timeline and in the site finder; blurred blocks when going to a site
+  outside 80 S (the view now stops at 320 m a pixel there); blotchy panels
+  over bright ground; a four-line status line on a narrow map; lines in the
+  brief that began with a full stop.
+- The end-to-end check now takes its expected rows from the test fixture.
+  The ridge row first disagreed (120 h against 122 h longest dark): the
+  fixture walked the terrain with a 5 m first step and the app with 1.25 m.
+  The fixture was wrong and was regenerated. 10 of 10 checks pass.
+- Validation page, deck (7 slides) and demo video (28 s) re-made on the new
+  terrain and interface. Terrain work merged (PR #21).
+- One thing that went wrong: the four agents doing this in parallel each
+  took its own earlier background jobs for another agent's and stopped. Their
+  transcripts showed there was no second agent; each was told to carry on.
+- The video project (`video/`) is in the repository now. Its music file is
+  not: the Mixkit licence does not allow passing the file on, so the README
+  says how to fetch it. Music, effects and tools are in CREDITS.md.
+- Open: hosting (waiting for a server and a domain), then the live address
+  goes on slide 7, in the form, the README and the video's last shot.

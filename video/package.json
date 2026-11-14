@@ -1,0 +1,28 @@
+{
+  "name": "earthrise-demo-video",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "capture": "node scripts/capture.mjs",
+    "render": "remotion render src/index.ts EarthriseDemo out/earthrise-demo.mp4",
+    "render:nomusic": "remotion render src/index.ts EarthriseDemo out/earthrise-demo-nomusic.mp4 --props=props-nobgm.json",
+    "still": "remotion still src/index.ts EarthriseDemo",
+    "probe": "for f in out/earthrise-demo.mp4 out/earthrise-demo-nomusic.mp4; do ffprobe -v error -show_entries format=duration:stream=codec_name,width,height,r_frame_rate -of compact=p=0 \"$f\"; done",
+    "build": "npm run render && npm run render:nomusic && npm run probe",
+    "stills": "node scripts/stills.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/archivo": "^5.2.5",
+    "@fontsource-variable/source-serif-4": "^5.2.5",
+    "@remotion/cli": "4.0.484",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "remotion": "4.0.484"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.17",
+    "puppeteer-core": "^25.17.0",
+    "typescript": "6.0.3"
+  }
+}
