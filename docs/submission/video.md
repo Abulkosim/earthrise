@@ -3,7 +3,7 @@
 A 28-second video, under the 30-second limit in the Project Submission Guide,
 following its timing. Narration in English, read at an even pace; English
 subtitles are the narration word for word. Screen captures come from the live
-app (live address: LIVE URL TO ADD) in the default view unless noted.
+app (live address: https://abulkosim.github.io/earthrise/) in the default view unless noted.
 Use no AI-generated images, video or audio.
 
 ## Shot list
@@ -16,7 +16,7 @@ Use no AI-generated images, video or audio.
 | 0:10 to 0:14 | Screen recording: the Mission brief on the left; the landing date and battery numbers are edited. Status line: "Tracing the horizon in 360 directions from ... points". | Set a landing date and a lander. |
 | 0:14 to 0:20 | Layer switches to "Where the mission works"; bright ground meets the brief. At 0:17 a click on the Shackleton connecting ridge opens the site panel: the panorama with the gold Sun and blue Earth over the terrain horizon, and "It sets in ...". | From NASA terrain and JPL ephemeris, the map shows where the mission works. |
 | 0:20 to 0:25 | "Show me a landing date that slips" in the top bar: the landing date moves forward day by day, the bright ground shrinks and grows, and the landing calendar under the map follows. | When a launch slips, planners see at once where to land instead. |
-| 0:25 to 0:28 | Wide shot of the whole app, then the live address (LIVE URL TO ADD) on black. | For planners, students and anyone curious. |
+| 0:25 to 0:28 | Wide shot of the whole app, then the live address (abulkosim.github.io/earthrise) on black. | For planners, students and anyone curious. |
 
 ## Narration (also the subtitles)
 
