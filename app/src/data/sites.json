@@ -393,6 +393,36 @@
   "source": "https://trek.nasa.gov/moon/trekarcgis2/rest/services/LRO_LOLA_MaxIlluminationSites_asl_SP/MapServer/0"
  },
  {
+  "id": "barker-site1-roi1",
+  "name": "Connecting ridge, region 1",
+  "lat": -89.43893,
+  "lon": 222.904,
+  "kind": "candidate",
+  "agency": "NASA",
+  "note": "Centre of region 1 of Barker et al. 2021 (5 m map): over 70% average sunlight at 1 m in 2024 and 2025.",
+  "source": "https://doi.org/10.1016/j.pss.2020.105119"
+ },
+ {
+  "id": "barker-site1-roi4",
+  "name": "Connecting ridge, region 4",
+  "lat": -89.45267,
+  "lon": 222.8513,
+  "kind": "candidate",
+  "agency": "NASA",
+  "note": "Centre of region 4 of Barker et al. 2021 (5 m map): over 70% average sunlight at 1 m in 2024 and 2025.",
+  "source": "https://doi.org/10.1016/j.pss.2020.105119"
+ },
+ {
+  "id": "barker-site1-roi6",
+  "name": "Connecting ridge, region 6",
+  "lat": -89.47394,
+  "lon": 222.6246,
+  "kind": "candidate",
+  "agency": "NASA",
+  "note": "Centre of region 6 of Barker et al. 2021 (5 m map): over 70% average sunlight at 1 m in 2024 and 2025.",
+  "source": "https://doi.org/10.1016/j.pss.2020.105119"
+ },
+ {
   "id": "shackleton-rim",
   "name": "Shackleton rim",
   "lat": -89.78,
