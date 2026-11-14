@@ -219,7 +219,14 @@ function Main({ data }: { data: DataStore }) {
         onEngine={(e) => { setEngine(e); (window as unknown as { __earthrise: unknown }).__earthrise = { engine: e, data } }}
       />
 
-      {status.pass !== null && layer !== 'now' && (
+      {layer !== 'now' && status.phase !== 'idle' && (
+        <p className="map-note" role="status">
+          {status.phase === 'horizons'
+            ? `Tracing the horizon around every point in view… ${Math.round(status.progress * 100)}%`
+            : status.phase === 'mission' ? 'Running the stay at every point…' : 'Loading terrain…'}
+        </p>
+      )}
+      {status.pass !== null && layer !== 'now' && status.phase === 'idle' && (
         <p className="map-note" role="status">
           {status.pass === 0
             ? `No ground in view meets the brief for a landing on ${fmtDate(data.epochMs + brief.landing * 3600e3)}. Drag the stay in the timeline to try other dates, or relax a need.`
