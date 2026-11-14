@@ -1,0 +1,127 @@
+[
+ {
+  "id": "chandrayaan-3-2023",
+  "siteId": "chandrayaan-3",
+  "title": "Chandrayaan-3, August 2023",
+  "landingUtc": "2023-08-23T12:34:00Z",
+  "endUtc": "2023-09-07T00:00:00Z",
+  "terrain": "240 m LOLA",
+  "happened": "Vikram landed on 23 August 2023 at 12:34 UTC, early in the local day. ISRO put Pragyan to sleep on 2 September and Vikram on 4 September at about 02:30 UTC, with charged batteries, as night came. Neither answered the wake-up calls that began on 22 September.",
+  "model": "On the 240 m map the Sun stood 8.6 degrees up at landing, fully clear of the terrain, and the Earth 10.9 degrees above it. The model's sunset is 4 September at 07:34 UTC, about 5 hours after Vikram was put to sleep with the Sun still 2.4 degrees up. The next sunrise is 19 September at 22:34 UTC, so the light did come back before the wake-up calls; the model has no thermal part and cannot say why the lander did not answer.",
+  "numbers": {
+   "sunElevationAtLandingDeg": 8.61,
+   "sunFractionAtLanding": 1.0,
+   "modelSunsetUtc": "2023-09-04T07:34Z",
+   "modelSunriseUtc": "2023-09-19T22:34Z",
+   "earthElevationAboveTerrainAtLandingDeg": 10.91,
+   "earthClearShare": 1.0
+  },
+  "sources": [
+   "https://www.livescience.com/space/the-moon/india-lands-on-moon-chandrayaan-3-becomes-worlds-1st-spacecraft-to-land-near-lunar-south-pole",
+   "https://www.businesstoday.in/latest/trends/story/chandrayaan-3-update-vikram-lander-set-into-sleep-mode-at-8-am-payloads-are-now-switched-off-says-isro-396766-2023-09-04",
+   "https://spacepolicyonline.com/news/india-says-good-night-to-chandrayaan-3/",
+   "https://planetarynames.wr.usgs.gov/Feature/16272"
+  ]
+ },
+ {
+  "id": "slim-2024",
+  "siteId": "slim",
+  "title": "SLIM, January 2024",
+  "landingUtc": "2024-01-19T15:20:00Z",
+  "endUtc": "2024-02-02T00:00:00Z",
+  "terrain": "smooth sphere",
+  "happened": "SLIM landed on 19 January 2024 at 15:20 UTC (00:20 on 20 January in Japan), but it came to rest on its nose with its solar cells facing west, and JAXA switched it off less than three hours later. Contact came back on 28 January, once sunlight reached the cells. It went dormant as night fell at the start of February, and answered again in late February, after the night.",
+  "model": "This site is north of 60 S, so the model uses a smooth sphere. The Sun stood 37.2 degrees up in the east at landing, crossed the meridian into the western sky on 23 January at 22:10 UTC and set on 31 January at 09:40 UTC, which matches the dormancy. The model assumes an upright lander with a Sun-tracking array, so it cannot say when west-facing cells on a lander resting on its nose would start to work.",
+  "numbers": {
+   "sunElevationAtLandingDeg": 37.21,
+   "sunFractionAtLanding": 1.0,
+   "modelSunsetUtc": "2024-01-31T09:40Z",
+   "modelSunriseUtc": "2024-02-15T01:40Z",
+   "earthElevationAboveTerrainAtLandingDeg": 68.25,
+   "earthClearShare": 1.0
+  },
+  "sources": [
+   "https://global.jaxa.jp/press/2024/01/20240125-1_e.html",
+   "https://www.livescience.com/space/the-moon/japans-moon-sniper-resurrected-nearly-9-days-after-losing-power-thanks-to-solar-charge",
+   "https://spacepolicyonline.com/news/slim-beats-the-odds-again/",
+   "https://lroc.im-ldi.com/images/1358"
+  ]
+ },
+ {
+  "id": "im-1-2024",
+  "siteId": "im-1-odysseus",
+  "title": "IM-1 Odysseus, February 2024",
+  "landingUtc": "2024-02-22T23:23:00Z",
+  "endUtc": "2024-03-04T12:00:00Z",
+  "terrain": "20 m LOLA",
+  "happened": "Odysseus landed near Malapert A on 22 February 2024 at 23:23 UTC and ended up on its side, with antennas that are fixed and could not be turned towards Earth. The team first expected about nine days before the Sun set on the site, then cut that estimate. Intuitive Machines put the lander in standby on 29 February.",
+  "model": "On the 20 m map the Sun stood 10.5 degrees up at landing and the site stayed in full sunlight until the model's sunset on 2 March at 18:23 UTC, 8.8 days after landing, close to the nine days first expected. At the standby on 29 February the Sun was still 5.7 degrees up and fully clear of the terrain. So the early end was not the terrain's shadow but how the tipped lander sat, which this model does not know.",
+  "numbers": {
+   "sunElevationAtLandingDeg": 10.47,
+   "sunFractionAtLanding": 1.0,
+   "modelSunsetUtc": "2024-03-02T18:23Z",
+   "modelSunriseUtc": "2024-03-20T03:03Z",
+   "earthElevationAboveTerrainAtLandingDeg": 15.33,
+   "earthClearShare": 1.0
+  },
+  "sources": [
+   "https://www.americaspace.com/2024/02/22/im-1-lands-safely-achieves-first-u-s-soft-lunar-touchdown-since-apollo-17/",
+   "https://www.americaspace.com/2024/02/26/im-1-struggles-with-communications-after-tipping-over/",
+   "https://satnews.com/2024/02/29/intuitive-machines-im-1-mission-success-american-ingenuity-never-gives-up/",
+   "https://lroc.im-ldi.com/images/1360"
+  ]
+ },
+ {
+  "id": "im-2-2025",
+  "siteId": "im-2-athena",
+  "title": "IM-2 Athena, March 2025",
+  "landingUtc": "2025-03-06T17:31:00Z",
+  "endUtc": "2025-03-09T00:00:00Z",
+  "terrain": "20 m LOLA",
+  "happened": "Athena landed on Mons Mouton on 6 March 2025 at about 17:31 UTC, about 250 m from its target, and came to rest on its side in a crater about 20 m across. Intuitive Machines said that with the direction of the Sun, the orientation of the panels and the cold in the crater it would not recharge, and declared the mission over on 7 March.",
+  "model": "On the 20 m map the Sun stood only 2.5 degrees up at landing, 1.6 degrees above the terrain, and the point stays in sunlight until 19 March at 23:01 UTC; the target point published by LROC gives almost the same (20 March at 01:41 UTC). So the map gives this site about 13 days of Sun, and the model cannot explain the end of the mission. A 20 m crater is one pixel of this map, and with the Sun 2.5 degrees up anything 3 m tall within 50 m can hide it; that, and a lander on its side, are below what the model can see.",
+  "numbers": {
+   "sunElevationAtLandingDeg": 2.47,
+   "sunFractionAtLanding": 1.0,
+   "modelSunsetUtc": "2025-03-19T23:01Z",
+   "modelSunriseUtc": "2025-04-04T19:11Z",
+   "earthElevationAboveTerrainAtLandingDeg": 12.31,
+   "earthClearShare": 1.0
+  },
+  "sources": [
+   "https://www.space.com/the-universe/moon/intuitive-machines-lands-private-athena-lander-near-moon-south-pole-historic-touchdown",
+   "https://spaceflightnow.com/?p=68928",
+   "https://lroc.im-ldi.com/images/1408",
+   "https://lroc.im-ldi.com/images/1401"
+  ]
+ },
+ {
+  "id": "blue-ghost-1-2025",
+  "siteId": "blue-ghost-1",
+  "title": "Blue Ghost Mission 1, March 2025",
+  "landingUtc": "2025-03-02T08:34:00Z",
+  "endUtc": "2025-03-17T12:00:00Z",
+  "terrain": "smooth sphere",
+  "happened": "Blue Ghost landed upright in Mare Crisium on 2 March 2025 at 08:34 UTC and worked through the whole lunar day. On 14 March it filmed the Earth covering the Sun, and on 16 March it imaged the sunset and ran just over five hours into the night; the last data arrived at about 23:15 UTC.",
+  "model": "On a smooth sphere (there is no terrain north of 60 S) the Sun stood 3.4 degrees up at landing. On 14 March the Earth covered it completely from 06:18 to 08:34 UTC, middle at 07:26, 27 minutes after the 06:58:43 peak seen from Earth, because the site is on the Moon's trailing side and meets the shadow late. The model's sunset is 16 March at 21:04 UTC, about 2 hours before the last data rather than five; a western horizon about 1.2 degrees high, which a smooth sphere cannot show, or a different meaning of night (by Firefly's count it began a little before 18:15 UTC) would close the gap.",
+  "numbers": {
+   "sunElevationAtLandingDeg": 3.43,
+   "sunFractionAtLanding": 1.0,
+   "modelSunsetUtc": "2025-03-16T21:04Z",
+   "modelSunriseUtc": "2025-03-31T13:34Z",
+   "earthElevationAboveTerrainAtLandingDeg": 25.81,
+   "earthClearShare": 1.0,
+   "eclipse": {
+    "startUtc": "2025-03-14T05:01Z",
+    "maxUtc": "2025-03-14T07:26Z",
+    "endUtc": "2025-03-14T09:51Z"
+   }
+  },
+  "sources": [
+   "https://fireflyspace.com/news/firefly-aerospace-becomes-first-commercial-company-to-successfully-land-on-the-moon/",
+   "https://fireflyspace.com/?p=3576",
+   "https://www.timeanddate.com/eclipse/lunar/2025-march-14",
+   "https://lroc.im-ldi.com/images/1407"
+  ]
+ }
+]
