@@ -28,7 +28,7 @@ TO ADD
 
 ## Link to final project
 
-LIVE URL TO ADD
+https://abulkosim.github.io/earthrise/
 
 Source code: https://github.com/Abulkosim/earthrise
 
