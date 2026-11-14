@@ -55,6 +55,7 @@ export class Engine {
   dmax = 400e3
   baked = false
   lost = false
+  manual = false
   onLost?: () => void
   stats = { bakeMs: 0, evalMs: 0, nowMs: 0 }
   private progs: Record<string, Prog> = {}
@@ -81,7 +82,9 @@ export class Engine {
     const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' })
     if (!gl) throw new Error('This browser has no WebGL 2.')
     if (!gl.getExtension('EXT_color_buffer_float')) throw new Error('This GPU cannot render to float textures.')
-    if (!gl.getExtension('OES_texture_float_linear')) throw new Error('This GPU cannot filter float textures.')
+    // Without float filtering (some phones) the shaders blend height samples themselves and the
+    // result layers are shown unsmoothed. Slower and blockier, but the numbers are the same.
+    this.manual = !gl.getExtension('OES_texture_float_linear') || new URLSearchParams(location.search).has('nolinear')
     this.gl = gl
     canvas.addEventListener('webglcontextlost', (ev) => { ev.preventDefault(); this.lost = true; this.onLost?.() })
     this.fbo = gl.createFramebuffer()!
@@ -101,7 +104,7 @@ export class Engine {
     const gl = this.gl
     const sh = (type: number, src: string) => {
       const s = gl.createShader(type)!
-      gl.shaderSource(s, src); gl.compileShader(s)
+      gl.shaderSource(s, src.replace('/*DEFINES*/', this.manual ? '#define MANUAL_BILINEAR' : '')); gl.compileShader(s)
       if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(`${name}: ${gl.getShaderInfoLog(s)}`)
       return s
     }
@@ -125,7 +128,7 @@ export class Engine {
     gl.bindTexture(gl.TEXTURE_2D, t)
     gl.texStorage2D(gl.TEXTURE_2D, 1, gl.R32F, n, n)
     if (a) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, n, n, gl.RED, gl.FLOAT, a)
-    for (const k of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, k, gl.LINEAR)
+    for (const k of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, k, this.manual ? gl.NEAREST : gl.LINEAR)
     for (const k of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE)
     return t
   }
@@ -133,7 +136,9 @@ export class Engine {
     const gl = this.gl, t = gl.createTexture()!
     gl.bindTexture(gl.TEXTURE_2D, t)
     gl.texStorage2D(gl.TEXTURE_2D, 1, fmt, w, h)
-    for (const k of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, k, filter)
+    // 32-bit float textures can only be smoothed where the GPU supports it
+    const f = this.manual && (fmt === gl.RGBA32F || fmt === gl.R32F) ? gl.NEAREST : filter
+    for (const k of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, k, f)
     for (const k of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE)
     return t
   }
@@ -455,9 +460,10 @@ export class Engine {
     const st = this.readState(2, 2), s0 = this.readState(0, 2)
     const inf = 1e20
     const g = new Float64Array(w * h)
-    // lit-any count of zero: permanent shadow. Pixels with no terrain (marked by the evaluation with
-    // a huge dark run) are not shadow, they are nothing.
-    for (let i = 0; i < w * h; i++) g[i] = st[i * 4 + 3] === 0 && s0[i * 4 + 1] < 1e5 ? 0 : inf
+    // lit-any count of zero: permanent shadow. Pixels with no terrain are not shadow, they are nothing:
+    // the evaluation marks them with a dark run of 1e6 h. (A real dark run here is at most the whole
+    // 163,000 h of the long run, so the test sits between the two.)
+    for (let i = 0; i < w * h; i++) g[i] = st[i * 4 + 3] === 0 && s0[i * 4 + 1] < 5e5 ? 0 : inf
     // exact squared Euclidean distance transform (Felzenszwalb and Huttenlocher), rows then columns
     const pass = (len: number, get: (i: number) => number, set: (i: number, v: number) => void) => {
       const v = new Int32Array(len), z = new Float64Array(len + 1)

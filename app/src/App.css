@@ -74,6 +74,15 @@ button.text:hover { text-decoration-color: var(--dust-1); }
 }
 
 /* ---- site sheet ---- */
+.intro {
+  grid-area: map; align-self: start; justify-self: start; z-index: 2;
+  margin: var(--gap-4); padding: var(--gap-4) var(--gap-5); max-width: 50ch;
+  background: rgba(0, 0, 0, 0.82); font-size: var(--t-md); line-height: 1.55;
+}
+.intro h2 { font-size: var(--t-lg); margin-bottom: var(--gap-2); }
+.intro p { color: var(--dust-1); margin-bottom: var(--gap-2); }
+.intro-actions { display: flex; flex-wrap: wrap; gap: var(--gap-2) var(--gap-4); margin: var(--gap-3) 0 0; }
+
 /* The sheet lies over the right edge of the map. The map keeps its size, so opening a site
    does not throw away the horizons already traced for the view. */
 .sheet { grid-area: map; justify-self: end; width: min(372px, 100%); z-index: 3; overflow-y: auto; border-left: var(--rule); padding: var(--gap-4); background: var(--ground-1); }
@@ -99,7 +108,7 @@ button.text:hover { text-decoration-color: var(--dust-1); }
 
 /* ---- bottom ---- */
 .bottom { grid-area: bottom; border-top: var(--rule); min-width: 0; max-height: 44vh; overflow-y: auto; }
-.bottom .ribbon { --ribbon-name-w: 268px; }
+.bottom .ribbon { --ribbon-name-w: inherit; }
 .transport { display: flex; align-items: baseline; gap: var(--gap-4); padding: 6px var(--gap-4) 0; }
 .transport .clock { color: var(--dust-1); font-size: var(--t-md); font-weight: 600; min-width: 21ch; }
 
@@ -108,9 +117,12 @@ button.text:hover { text-decoration-color: var(--dust-1); }
   .sheet { grid-area: sheet; width: auto; }
   .left { border-right: 0; border-top: var(--rule); }
   .sheet { border-left: 0; border-top: var(--rule); }
-  .top { flex-wrap: wrap; }
-  .top .shows { color: var(--dust-2); white-space: nowrap; display: flex; gap: var(--gap-3); align-items: baseline; }
-.top .status { display: none; }
+  .top { flex-wrap: wrap; gap: var(--gap-2) var(--gap-4); }
+  .top .status { display: none; }
+  .top .tag, .top .shows, .top nav { white-space: normal; flex-wrap: wrap; }
+  .calendar-name { padding-left: var(--gap-2); }
+  .transport { flex-wrap: wrap; gap: var(--gap-1) var(--gap-4); }
+  .intro { margin: var(--gap-2); }
 }
 
 .calendar { display: grid; align-items: end; padding-top: var(--gap-2); }

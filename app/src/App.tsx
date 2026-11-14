@@ -250,7 +250,17 @@ function Main({ data }: { data: DataStore }) {
     const t = window.setTimeout(() => writeShared(data.epochMs, view, now, brief, layer, selected, compared), 400)
     return () => window.clearTimeout(t)
   }, [data, view, now, brief, layer, selected, compared, playing, slipping])
+  // a short explanation for people who have never thought about the lunar pole; shown once
+  const [intro, setIntro] = useState(() => { try { return !location.hash && localStorage.getItem('earthrise-intro') !== 'seen' } catch { return false } })
+  const closeIntro = () => { setIntro(false); try { localStorage.setItem('earthrise-intro', 'seen') } catch { /* private mode: show it again next time */ } }
   const [copied, setCopied] = useState(false)
+  // the timeline's name column: narrow on phones, so the lanes keep most of the width
+  const [nameW, setNameW] = useState(() => (window.innerWidth < 700 ? 124 : 268))
+  useEffect(() => {
+    const on = () => setNameW(window.innerWidth < 700 ? 124 : 268)
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
   const copyLink = () => {
     writeShared(data.epochMs, view, now, brief, layer, selected, compared)
     void navigator.clipboard?.writeText(location.href).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000) })
@@ -277,6 +287,7 @@ function Main({ data }: { data: DataStore }) {
         </p>
         <p className="status narrow" role="status">{statusText}</p>
         <nav>
+          <button type="button" className="text" onClick={() => setIntro(true)}>New here?</button>
           <button type="button" className="text" onClick={copyLink}>{copied ? 'Link copied' : 'Copy a link to this view'}</button>
           <a href={`${import.meta.env.BASE_URL}validation.html`}>How we know it is right</a>
         </nav>
@@ -327,14 +338,27 @@ function Main({ data }: { data: DataStore }) {
         onEngine={(e) => { setEngine(e); (window as unknown as { __earthrise: unknown }).__earthrise = { engine: e, data } }}
       />
 
-      {layer !== 'now' && status.phase !== 'idle' && (
+      {intro && (
+        <section className="intro" aria-label="The Moon's south pole in one minute">
+          <h2>The Moon’s south pole in one minute</h2>
+          <p>At the pole the Sun never climbs more than a couple of degrees. It circles the horizon once a month, so a hill a few kilometres away can hide it for days.</p>
+          <p>The Earth hangs low as well, and bobs up and down. When it drops behind the terrain, a lander cannot talk to home.</p>
+          <p>So where and when you land decides whether you have power and a radio link. This map works that out for every point at once, from NASA’s laser elevation maps.</p>
+          <p className="intro-actions">
+            <button type="button" className="text" onClick={() => { closeIntro(); showMonth() }}>Show me a lunar month of light</button>
+            <button type="button" className="text" onClick={() => { closeIntro(); showSlip() }}>Show me a landing date that slips</button>
+            <button type="button" className="text" onClick={closeIntro}>Close</button>
+          </p>
+        </section>
+      )}
+      {!intro && layer !== 'now' && status.phase !== 'idle' && (
         <p className="map-note" role="status">
           {status.phase === 'horizons'
             ? `Tracing the horizon around every point in view… ${Math.round(status.progress * 100)}%`
             : status.phase === 'mission' ? 'Running the stay at every point…' : 'Loading terrain…'}
         </p>
       )}
-      {status.pass !== null && layer !== 'now' && status.phase === 'idle' && (
+      {!intro && status.pass !== null && layer !== 'now' && status.phase === 'idle' && (
         <p className="map-note" role="status">
           {status.pass === 0
             ? `No ground in view meets the brief for a landing on ${fmtDate(data.epochMs + brief.landing * 3600e3)}. Drag the stay in the timeline to try other dates, or relax a need.`
@@ -351,14 +375,14 @@ function Main({ data }: { data: DataStore }) {
         />
       )}
 
-      <footer className="bottom">
+      <footer className="bottom" style={{ '--ribbon-name-w': `${nameW}px` } as React.CSSProperties}>
         <div className="transport">
           <button type="button" className="text" onClick={() => { setSlipping(false); setSpeed(12); setPlaying((v) => !v) }}>{playing ? 'Pause' : 'Play time'}</button>
           <span className="clock narrow">{fmtDateTime(data.epochMs + now * 3600e3)} UTC</span>
           <button type="button" className="text" onClick={() => setNow(brief.landing)}>Jump to landing</button>
         </div>
         <Calendar
-          data={calendar} t0={spanT0} hours={SPAN_H} epochMs={data.epochMs} landing={brief.landing} nameWidth={268}
+          data={calendar} t0={spanT0} hours={SPAN_H} epochMs={data.epochMs} landing={brief.landing} nameWidth={nameW}
           onLanding={(h) => setBrief((b) => ({ ...b, landing: Math.round(h) }))}
         />
         <Ribbon
