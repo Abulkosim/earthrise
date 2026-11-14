@@ -1,0 +1,16 @@
+# Written with AI assistance (Claude); see the README.
+# Serves Earthrise as a static site with automatic HTTPS.
+# Set the domain when starting Caddy:  DOMAIN=earthrise.example.org caddy run --config Caddyfile
+{$DOMAIN:localhost} {
+	root * /var/www/earthrise
+	encode zstd gzip
+	file_server
+
+	# Terrain tiles and the ephemeris never change for a given build.
+	@data path /data/*
+	header @data Cache-Control "public, max-age=604800"
+
+	# The app's own files carry a hash in their name.
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+}
