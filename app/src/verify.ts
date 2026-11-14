@@ -1,7 +1,7 @@
 // Written with AI assistance (Claude); see the README.
 // Compares the GPU engine with the Python reference model (fixtures.json) and prints the errors.
 // URL parameters: mode=goddard (cx, cy, w, cell, years, dt, full=1) or the 24-point check (growth, fine, mpp, w, field=0).
-import { explain, goddardCheck, horizonCheck } from './checks'
+import { barkerCheck, explain, goddardCheck, horizonCheck } from './checks'
 import { DataStore } from './engine/data'
 import { Engine } from './engine/engine'
 
@@ -46,8 +46,24 @@ async function main() {
   const data = new DataStore()
   await data.init()
   const eng = new Engine(document.getElementById('c') as HTMLCanvasElement, data)
+  if (q.get('fine')) eng.fine = Number(q.get('fine'))
+  if (q.get('mode') === 'barker') return barker(eng)
   return q.get('mode') === 'goddard' ? goddard(eng) : points(eng)
 }
+
+// The engine against Barker et al. 2021, Table 2 (seven regions on the connecting ridge, 2024-2026).
+async function barker(eng: Engine) {
+  log('Barker et al. 2021, Table 2, case A. Ours: one run on the nominal terrain, mean over the region.')
+  log('Theirs: 1st percentile over 100 terrain clones (average, longest lit), 99th percentile (longest shadow).')
+  log('region height pixels | avg ill %: ours  paper p1 | longest lit d: ours  paper p1 | longest shadow d: ours  paper p99')
+  const r = await barkerCheck(eng, (d, t, label) => { if (d < t) log(`${d + 1}/${t} ${label}`) })
+  const f = (v: number, w = 7, d = 2) => v.toFixed(d).padStart(w)
+  for (const x of r.rows) log(`RoI ${x.roi}  ${x.mast} m  ${String(x.pixels).padStart(4)} | ${f(x.avg)} ${f(x.paperAvgP1)} | ${f(x.lcipDays)} ${f(x.paperLcipP1)} | ${f(x.lcspDays)} ${f(x.paperLcspP99)}`)
+  log(`focus ${eng.data.hasLevel('t5') ? '5 m tiles' : '20 m tiles'}; ${(r.ms / 1000).toFixed(0)} s`)
+  setResult({ done: true, barker: r.rows })
+  log('DONE')
+}
+
 // ?report=<url>: POST the outcome there when done, so a browser that cannot be scripted (Safari)
 // can still be checked. The listener only needs to log request bodies.
 function report(payload: unknown) {

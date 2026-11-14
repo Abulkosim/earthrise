@@ -7,12 +7,12 @@
   "endUtc": "2023-09-07T00:00:00Z",
   "terrain": "240 m LOLA",
   "happened": "Vikram landed on 23 August 2023 at 12:34 UTC, early in the local day. ISRO put Pragyan to sleep on 2 September and Vikram on 4 September at about 02:30 UTC, with charged batteries, as night came. Neither answered the wake-up calls that began on 22 September.",
-  "model": "On the 240 m map the Sun stood 8.6 degrees up at landing, fully clear of the terrain, and the Earth 10.9 degrees above it. The model's sunset is 4 September at 07:34 UTC, about 5 hours after Vikram was put to sleep with the Sun still 2.4 degrees up. The next sunrise is 19 September at 22:34 UTC, so the light did come back before the wake-up calls; the model has no thermal part and cannot say why the lander did not answer.",
+  "model": "On the 240 m map the Sun stood 8.6 degrees up at landing, fully clear of the terrain, and the Earth 10.9 degrees above it. The model's sunset is 4 September at 07:34 UTC, about 5 hours after Vikram was put to sleep with the Sun still 2.4 degrees up. The next sunrise is 19 September at 22:44 UTC, so the light did come back before the wake-up calls; the model has no thermal part and cannot say why the lander did not answer.",
   "numbers": {
    "sunElevationAtLandingDeg": 8.61,
    "sunFractionAtLanding": 1.0,
    "modelSunsetUtc": "2023-09-04T07:34Z",
-   "modelSunriseUtc": "2023-09-19T22:34Z",
+   "modelSunriseUtc": "2023-09-19T22:44Z",
    "earthElevationAboveTerrainAtLandingDeg": 10.91,
    "earthClearShare": 1.0
   },
@@ -60,13 +60,13 @@
   "endUtc": "2024-03-04T12:00:00Z",
   "terrain": "20 m LOLA",
   "happened": "Odysseus landed near Malapert A on 22 February 2024 at 23:23 UTC and ended up on its side, with antennas that are fixed and could not be turned towards Earth. The team first expected about nine days before the Sun set on the site, then cut that estimate. Intuitive Machines put the lander in standby on 29 February.",
-  "model": "On the 20 m map the Sun stood 10.5 degrees up at landing and the site stayed in full sunlight until the model's sunset on 2 March at 18:23 UTC, 8.8 days after landing, close to the nine days first expected. At the standby on 29 February the Sun was still 5.7 degrees up and fully clear of the terrain. So the early end was not the terrain's shadow but how the tipped lander sat, which this model does not know.",
+  "model": "On the 20 m map the Sun stood 10.5 degrees up at landing and the site stayed in full sunlight until the model's sunset on 2 March at 18:03 UTC, 8.8 days after landing, close to the nine days first expected. At the standby on 29 February the Sun was still 5.7 degrees up and fully clear of the terrain. So the early end was not the terrain's shadow but how the tipped lander sat, which this model does not know.",
   "numbers": {
    "sunElevationAtLandingDeg": 10.47,
    "sunFractionAtLanding": 1.0,
-   "modelSunsetUtc": "2024-03-02T18:23Z",
-   "modelSunriseUtc": "2024-03-20T03:03Z",
-   "earthElevationAboveTerrainAtLandingDeg": 15.33,
+   "modelSunsetUtc": "2024-03-02T18:03Z",
+   "modelSunriseUtc": "2024-03-20T00:53Z",
+   "earthElevationAboveTerrainAtLandingDeg": 15.28,
    "earthClearShare": 1.0
   },
   "sources": [
@@ -84,11 +84,11 @@
   "endUtc": "2025-03-09T00:00:00Z",
   "terrain": "20 m LOLA",
   "happened": "Athena landed on Mons Mouton on 6 March 2025 at about 17:31 UTC, about 250 m from its target, and came to rest on its side in a crater about 20 m across. Intuitive Machines said that with the direction of the Sun, the orientation of the panels and the cold in the crater it would not recharge, and declared the mission over on 7 March.",
-  "model": "On the 20 m map the Sun stood only 2.5 degrees up at landing, 1.6 degrees above the terrain, and the point stays in sunlight until 19 March at 23:01 UTC; the target point published by LROC gives almost the same (20 March at 01:41 UTC). So the map gives this site about 13 days of Sun, and the model cannot explain the end of the mission. A 20 m crater is one pixel of this map, and with the Sun 2.5 degrees up anything 3 m tall within 50 m can hide it; that, and a lander on its side, are below what the model can see.",
+  "model": "On the 20 m map the Sun stood only 2.5 degrees up at landing, 1.6 degrees above the terrain, and the point stays in sunlight until 19 March at 22:51 UTC; the target point published by LROC gives almost the same (20 March at 02:01 UTC). So the map gives this site about 13 days of Sun, and the model cannot explain the end of the mission. A 20 m crater is one pixel of this map, and with the Sun 2.5 degrees up anything 3 m tall within 50 m can hide it; that, and a lander on its side, are below what the model can see.",
   "numbers": {
    "sunElevationAtLandingDeg": 2.47,
    "sunFractionAtLanding": 1.0,
-   "modelSunsetUtc": "2025-03-19T23:01Z",
+   "modelSunsetUtc": "2025-03-19T22:51Z",
    "modelSunriseUtc": "2025-04-04T19:11Z",
    "earthElevationAboveTerrainAtLandingDeg": 12.31,
    "earthClearShare": 1.0

@@ -788,3 +788,24 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* a value on the wrong side of a published bound */
+.vpage .vfail {
+  color: var(--fail);
+}
+
+/* the published-table check: ours on top, the paper's bound under it, in five columns */
+.vbarker th,
+.vbarker td {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+.vbarker td:first-child {
+  min-width: 0;
+  white-space: nowrap;
+}
+.vbarker .vbound {
+  display: block;
+  font-size: 12px;
+  color: var(--dust-3);
+}

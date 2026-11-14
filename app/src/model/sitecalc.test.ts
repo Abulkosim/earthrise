@@ -8,7 +8,7 @@ import type { Horizon, SiteSeries } from './types'
 import raw from './__fixtures__/reference.json?raw'
 
 interface RefSite {
-  name: string; lat: number; lon: number; terrain: boolean; ground: number; horizon: number[]
+  id: string; name: string; lat: number; lon: number; terrain: boolean; ground: number; horizon: number[]
   sunAz: number[]; sunEl: number[]; sunFrac: number[]; earthClear: number[]; dsn: number[]
   summary: { lit: number; longestDarkH: number; comm: number; longestSilenceH: number }
 }

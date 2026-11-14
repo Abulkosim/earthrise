@@ -14,7 +14,8 @@ Earthrise is a web app that shows where a lander at the Moon's south pole would
 have the Sun for power and the Earth for radio contact. Other tools answer this
 for one point at a time. Earthrise answers for the whole map at once. On the
 GPU it traces the terrain horizon in 360 directions from every point, using
-NASA's LOLA elevation data and JPL's DE440 ephemeris. Then it runs a whole
+NASA Goddard's track-adjusted LOLA elevation maps (down to 5 m) and JPL's DE440
+ephemeris. Then it runs a whole
 mission at every point: landing date, length of stay, solar array, battery,
 Earth clearance, Deep Space Network contact, and the science team's need for
 permanent shadow nearby. The map shows where the mission works. A landing
@@ -53,23 +54,30 @@ sunlight, longest dark, contact, longest silence, battery life, sunlight over
 
 A landing calendar under the map shows, for each landing date, how much ground
 in view meets the brief. With the default lander (450 W array, 3000 Wh battery),
-a 14-day stay landing on 3 November 2027 works on about 12% of the ground in
-the default view. The Shackleton connecting ridge passes; the Malapert Massif
-and Mons Mouton Plateau region centres fail. The share rises and falls with the
+a 14-day stay landing on 3 November 2027 works on about 15% of the ground in
+the default view. The catalogue's connecting-ridge point is about 64% sunlit
+with 61% contact, but its longest dark stretch, 5 days 2 hours, is over the
+brief's 72-hour limit. The Malapert Massif and Mons Mouton Plateau region
+centres fail too: the power runs out. The share rises and falls with the
 landing date, month by month.
 
-Click any point, pick one of 42 sites (Apollo, robotic landings of several
-countries, planned CLPS landings, Artemis III regions) or type coordinates. You
-get the lander's-eye panorama with the Sun and Earth against the real horizon,
-the time to sunset and Earthset, the distance to permanent shadow, and a
-verdict. Up to six sites share one timeline of Sun, Earth contact, battery and
-landing windows. Press play to watch the light move, or use the three
-one-click demonstrations: a lunar month of light, a landing date that slips,
-and the view from the ridge.
+Click any point, or find one of 45 sites (Apollo, robotic landings of several
+countries, planned CLPS landings, Artemis III regions, three regions from
+NASA Goddard's 5 m study of the connecting ridge) or type coordinates. You get
+the lander's-eye panorama with the Sun and Earth against the real horizon, the
+time to sunset and Earthset, the distance to permanent shadow, and a verdict.
+One tile answers "If the landing misses": the share of ground within 500 m
+that still meets the brief. IM-2 came down 250 m from its target. Up to six
+sites share one timeline of Sun, Earth contact, battery and landing windows.
+Press play to watch the light move, or use the "Show me" menu: a lunar month
+of light, a landing date that slips, the view from the ridge, and the best
+place to land in view, the point with the most workable ground around it. The
+map zooms in to 1.5 m per pixel.
 
 Five real landings can be replayed: Chandrayaan-3, SLIM, IM-1, IM-2 and Blue
 Ghost Mission 1. Each says what happened and what the model shows for the Sun
-and the Earth at that site and date.
+and the Earth at that site and date. SLIM came to rest with its cells facing
+west; the brief can describe a fixed array like that, and the replay uses it.
 
 That covers every objective of the challenge: site choice and comparison,
 dates, Sun and Earth against the horizon, power and contact metrics, science
@@ -78,26 +86,39 @@ language.
 
 ### How it works
 
-A WebGL 2 engine walks the LOLA terrain in 360 directions from every pixel of
-the view and stores the horizon: about 265,000 points in 3 to 5 seconds on an
-Apple M2 Pro. Sun and Earth positions come from SPICE (JPL DE440, MOON_ME
+A WebGL 2 engine walks the terrain in 360 directions from every pixel of the
+view and stores the horizon: 266,256 points in about 3.6 seconds on an Apple M2
+Pro. It nests four grids: a fine focus around the view (5 to 80 m), a 20 or
+40 m ring around a 5 or 10 m focus, 160 m and 960 m. The terrain is NASA
+Goddard's track-adjusted LOLA maps: 5 m from 87 S, 20 m to 80 S, 240 m to
+60 S. While time plays, the light comes from the cached horizons, so playback
+and panning stay smooth. Sun and Earth positions come from SPICE (JPL DE440, MOON_ME
 frame, light-time and aberration), hourly from 2023 to 2045. A 14-day stay at
-every point then takes 0.02 s; 365 landing dates take a few seconds. An
+every point then takes a fraction of a second. An
 18.6-year run in 12-hour steps, about 2 s, finds the ground that never sees the
 Sun and each point's distance to it.
 
 We checked it. Positions agree with JPL Horizons to 0.00003 degrees. Sun
 elevation at the six Apollo landings matches the Apollo Lunar Surface Journal
 within 0.15 degrees. The Earth's eclipse of the Sun seen by Blue Ghost in March
-2025 is reproduced. The GPU engine matches our Python reference model within
-0.2 percentage points. Against NASA Goddard's 18.6-year visibility maps,
-correlation is 0.942 for the Sun and 0.975 for the Earth. The app has its own
+2025 is reproduced. We reproduced Table 2 of Barker et al. 2021: seven regions
+on the connecting ridge, 2,114 pixels at 5 m, two years hourly, at 1 m and 5 m
+height. All 42 values fall on the right side of the paper's bounds; at 5 m
+height our average sunlight is 0.2 to 2.2 points above their 1st percentile.
+On the way we found why the older PDS elevation mosaics are wrong for this:
+errors along the laser tracks cast false shadows under a grazing Sun, and on
+the connecting ridge they cut the longest lit period from about 220 days to
+about 25. So we moved to Goddard's adjusted maps. The GPU engine matches our
+Python reference model at 24 points: horizons within 0.008 degrees on average,
+shares within 0.2 percentage points, the same in Safari as in Chrome. Against
+NASA Goddard's 18.6-year Sun visibility map, correlation is 0.942. The app has its own
 validation page, "How we know it is right", with every check, its sources, and
 buttons that rerun the GPU checks in the visitor's browser, including a
 comparison of permanent shadow with Goddard's map. An independent review of
 the engine code was part of the process, and its findings were fixed.
 
-Limits: 20 m terrain misses boulders and small craters; no thermal model; the
+Limits: the terrain (5 m near the pole, 20 m to 80 S) misses boulders and
+small craters; no thermal model; the
 antenna has no pointing limits; the battery model is simple.
 
 ### What benefits it has
@@ -115,7 +136,8 @@ It runs in a browser, with no install and no login.
 
 ### Tools and languages
 
-TypeScript, React 19, Vite and CSS for the app; GLSL on WebGL 2 for the engine;
+TypeScript, React 19 and Vite for the app, with shadcn/ui on Radix, Tailwind 4,
+Motion and lucide icons; GLSL on WebGL 2 for the engine;
 Python with NumPy, SpiceyPy and pytest for the reference model and data build.
 To be hosted on the team's own server.
 
@@ -131,10 +153,15 @@ audio.
 
 ## NASA data
 
-- LOLA gridded elevation from the Lunar Reconnaissance Orbiter (PDS Geosciences
-  Node): LDEM_80S_20M, LDEM_80S_40M and LDEM_80S_80M for the terrain and
-  horizons around the pole, LDEM_60S_240M for distant horizons and the map
-  down to 60 S.
+- NASA Goddard's track-adjusted LOLA elevation maps from the Lunar
+  Reconnaissance Orbiter: LDEM_87S_5MPP (5 m, 87 to 90 S; Barker et al. 2021,
+  PGDA product 81, from the USGS copy), LDEM_80S_20MPP_ADJ (20 m, to 80 S) and
+  LDEM_60S_240MPP_ADJ (240 m, to 60 S; Barker et al. 2023, PGDA product 90).
+  The terrain for every horizon.
+- NASA Goddard's Site01 region outlines on the connecting ridge: used for the
+  check against Barker et al. 2021, Table 2.
+- The older LOLA polar mosaics from the PDS Geosciences Node: used only for
+  comparison.
 - SPICE kernels from NASA's Navigation and Ancillary Information Facility
   (NAIF): naif0012.tls (leap seconds), pck00011.tpc (planetary constants),
   de440s.bsp (JPL DE440 ephemeris), moon_pa_de440_200625.bpc and
@@ -166,11 +193,14 @@ Other references:
 - IAU/USGS Gazetteer of Planetary Nomenclature: feature names on the map.
 - Mazarico et al. 2011, Icarus 211:1066 (illumination of the lunar poles from
   LOLA topography); Barker et al. 2021, Planetary and Space Science 203:105119
-  (LOLA south pole elevation maps and their effect on illumination); Gläser et
+  (LOLA south pole elevation maps and their effect on illumination; we reproduce
+  its Table 2); Barker et al. 2023, Planetary Science Journal 4:183 (the 20 m
+  and 240 m adjusted maps); Gläser et
   al. 2014, Icarus 243:78 (illumination at the lunar south pole from LOLA
   elevation models).
-- Libraries: React, Vite, TypeScript, SpiceyPy (wrapping NAIF's CSPICE),
-  NumPy, pytest, oxlint.
+- Libraries: React, Vite, TypeScript, Tailwind CSS, shadcn/ui, Radix, Motion,
+  lucide, cmdk, sonner, react-day-picker, SpiceyPy (wrapping NAIF's CSPICE),
+  NumPy, pytest, Vitest, puppeteer-core, oxlint.
 - Fonts: Archivo and Source Serif 4 (SIL Open Font License), through
   Fontsource.
 - Claude by Anthropic, through Claude Code (see Use of SI).

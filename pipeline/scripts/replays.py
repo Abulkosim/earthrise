@@ -107,11 +107,11 @@ _stacks = {}
 def terrain_for(lat_d):
     if lat_d <= -80.0:
         if "20m" not in _stacks:
-            _stacks["20m"] = dem.south("20m")
+            _stacks["20m"] = dem.south("5m")  # 5 m where it exists (87-90 S), else 20 m
         return "20 m LOLA", _stacks["20m"]
     if lat_d <= -60.0:
         if "240m" not in _stacks:
-            _stacks["240m"] = dem.NestedDem([dem.PolarDem(DATA_DIR / "ldem_60s_240m.img", 7760, 240.0)])
+            _stacks["240m"] = dem.NestedDem([dem.adjusted("240m")])
         return "240 m LOLA", _stacks["240m"]
     return "smooth sphere", None
 

@@ -32,6 +32,7 @@ interface Props {
   series: SiteSeries | null
   summary: SiteSummary | null // the stay, from landing to its end
   psrM: number | null         // metres to permanent shadow, when the site is in view and it is known
+  odds: { share: number; points: number } | null // share of the ground within 500 m that meets the brief
   now: number
   brief: Brief
   epochMs: number
@@ -153,6 +154,12 @@ export function SiteSheet(p: Props) {
                 <StatTile
                   label="Permanent shadow" value={psr} fail={failing.psr}
                   detail={p.psrM! <= 0 ? 'the site is in it' : 'to the nearest'}
+                />
+              )}
+              {p.odds && (
+                <StatTile
+                  label="If the landing misses" className="col-span-2" value={`${Math.round(p.odds.share * 100)}%`}
+                  detail="of the ground within 500 m of this point meets the brief"
                 />
               )}
             </div>

@@ -32,7 +32,7 @@ interface Props {
   onCalendar?(c: { t0: number; stepH: number; share: Float32Array; done: number } | null): void
 }
 
-const MIN_MPP = 6, MAX_MPP = 900
+const MIN_MPP = 1.5, MAX_MPP = 900 // 1.5 m per pixel shows the 5 m terrain; 900 shows everything to 60 S
 const MAX_R = 850e3 // the view centre stays inside the elevation data (60 S is 931 km from the pole)
 function clampView(v: MapViewState): MapViewState {
   const r = Math.hypot(v.cx, v.cy)

@@ -35,17 +35,18 @@ export interface HorizonOptions {
 const sortedAt = (a: number[], q: number) => a[Math.min(a.length - 1, Math.floor(a.length * q))]
 
 /**
- * 24 south-pole points against the Python reference (fixtures.json, pipeline/scripts/make_fixtures.py):
+ * 24 south-pole points against the Python reference (fixtures-v2.json, pipeline/scripts/make_fixtures.py):
  * the horizon in 720 directions, then the sunlit and Earth-contact shares over two lunar days.
  */
 export async function horizonCheck(eng: Engine, onProgress?: Progress, o: HorizonOptions = {}): Promise<HorizonResult> {
   const t0 = performance.now()
-  const r = await fetch(eng.data.base + 'fixtures.json')
-  if (!r.ok) throw new Error(`The reference answers (fixtures.json) did not load: ${r.status}.`)
+  const r = await fetch(eng.data.base + 'fixtures-v2.json')
+  if (!r.ok) throw new Error(`The reference answers (fixtures-v2.json) did not load: ${r.status}.`)
   const fx: Fixtures = await r.json()
   if (o.growth) eng.growth = o.growth
   if (o.fine) eng.fine = o.fine
-  const mpp = o.mpp ?? 20, fieldW = o.fieldW ?? 512, doField = o.field ?? true
+  // 5 m per pixel: a view that small loads the 5 m tiles, the same terrain the reference used
+  const mpp = o.mpp ?? 5, fieldW = o.fieldW ?? 512, doField = o.field ?? true
   const all: number[] = [], rows: PointRow[] = []
   for (const [k, p] of fx.points.entries()) {
     onProgress?.(k, fx.points.length, p.name)
@@ -193,6 +194,81 @@ export async function goddardCheck(eng: Engine, onProgress?: Progress, o: Goddar
 }
 
 /** A plain-words reason for an error thrown by the engine or the checks. */
+// ---- a published table ---------------------------------------------------
+export interface BarkerRow {
+  roi: number; mast: number; pixels: number
+  avg: number; lcipDays: number; lcspDays: number           // ours, averaged over the region's pixels
+  paperAvgP1: number; paperLcipP1: number; paperLcspP99: number
+}
+export interface BarkerResult { rows: BarkerRow[]; ms: number; source: string }
+
+/**
+ * Barker et al. 2021, Table 2: seven regions on the connecting ridge, 1 Jan 2024 to 1 Jan 2026, hourly,
+ * at 1 m and 5 m above the surface. We trace the horizon at every 5 m pixel of each region with the
+ * engine's probe and run the two years on the CPU. Their numbers are percentiles over 100 error clones
+ * of the terrain (1st for average illumination and the longest lit period, 99th for the longest
+ * shadow); ours is one run on the nominal terrain, with a uniform Sun disk where theirs is limb darkened.
+ */
+export async function barkerCheck(eng: Engine, onProgress?: Progress): Promise<BarkerResult> {
+  const t00 = performance.now()
+  const r = await fetch(eng.data.base + 'validation/barker-site1.json')
+  if (!r.ok) throw new Error(`The published table (barker-site1.json) did not load: ${r.status}.`)
+  const fx = await r.json() as {
+    source: string; window_utc: [string, string]; step_hours: number
+    rois: { roi: number; points_m: [number, number][]; paper: Record<'1m' | '5m', { avg_p1: number; lcip_p1_days: number; lcsp_p99_days: number }> }[]
+  }
+  const data = eng.data, R2D = 180 / Math.PI
+  const h0 = data.hours(Date.parse(fx.window_utc[0] + 'Z')), h1 = data.hours(Date.parse(fx.window_utc[1] + 'Z'))
+  const n = Math.round((h1 - h0) / fx.step_hours)
+  // the Sun for every step, once: unit vector, angular radius (deg), share hidden by the Earth
+  const sun = new Float64Array(n * 5), e = new Float64Array(9)
+  for (let k = 0; k < n; k++) {
+    data.sample(h0 + k * fx.step_hours, e)
+    sun.set([e[0], e[1], e[2], Math.asin(695700 / e[3]) * R2D, Math.min(1, e[8])], k * 5)
+  }
+  const rows: BarkerRow[] = []
+  const total = fx.rois.length * 2
+  let done = 0
+  for (const roi of fx.rois) {
+    for (const mast of [1, 5]) {
+      onProgress?.(done++, total, `region ${roi.roi}, ${mast} m`)
+      let sAvg = 0, sLit = 0, sDark = 0
+      for (let b0 = 0; b0 < roi.points_m.length; b0 += 200) {
+        const batch = roi.points_m.slice(b0, b0 + 200)
+        const pr = await eng.probe(batch.map(([x, y]) => ({ x, y, mast })), 720)
+        for (let i = 0; i < batch.length; i++) {
+          const [x, y] = batch[i]
+          const rho = Math.hypot(x, y), c = 2 * Math.atan(rho / (2 * 1737400)), sl = x / rho, cl = y / rho
+          const up = [Math.sin(c) * cl, Math.sin(c) * sl, -Math.cos(c)], east = [-sl, cl, 0]
+          const north = [up[1] * east[2] - up[2] * east[1], up[2] * east[0] - up[0] * east[2], up[0] * east[1] - up[1] * east[0]]
+          const hz = pr.el.subarray(i * 720, (i + 1) * 720)
+          let acc = 0, lit = 0, dark = 0, maxLit = 0, maxDark = 0
+          for (let k = 0; k < n; k++) {
+            const sx = sun[k * 5], sy = sun[k * 5 + 1], sz = sun[k * 5 + 2]
+            const el = Math.asin(sx * up[0] + sy * up[1] + sz * up[2]) * R2D
+            let az = Math.atan2(sx * east[0] + sy * east[1] + sz * east[2], sx * north[0] + sy * north[1] + sz * north[2]) * R2D
+            if (az < 0) az += 360
+            const a = az * 2, i0 = Math.floor(a), f = a - i0
+            const hel = hz[i0 % 720] * (1 - f) + hz[(i0 + 1) % 720] * f
+            const z = Math.min(1, Math.max(-1, (hel - el) / sun[k * 5 + 3]))
+            const frac = ((Math.acos(z) - z * Math.sqrt(1 - z * z)) / Math.PI) * (1 - sun[k * 5 + 4])
+            acc += frac
+            if (frac > 0) { lit++; dark = 0; if (lit > maxLit) maxLit = lit } else { dark++; lit = 0; if (dark > maxDark) maxDark = dark }
+          }
+          sAvg += acc / n; sLit += maxLit; sDark += maxDark
+        }
+      }
+      const px = roi.points_m.length, p = roi.paper[mast === 1 ? '1m' : '5m']
+      rows.push({
+        roi: roi.roi, mast, pixels: px, avg: (sAvg / px) * 100, lcipDays: (sLit / px) * fx.step_hours / 24, lcspDays: (sDark / px) * fx.step_hours / 24,
+        paperAvgP1: p.avg_p1, paperLcipP1: p.lcip_p1_days, paperLcspP99: p.lcsp_p99_days,
+      })
+    }
+  }
+  onProgress?.(total, total, 'done')
+  return { rows, ms: performance.now() - t00, source: fx.source }
+}
+
 export function explain(e: unknown): string {
   const m = e instanceof Error ? e.message : String(e)
   if (/WebGL 2/.test(m)) return 'This browser does not offer WebGL 2, which the engine needs. A recent Chrome, Edge, Firefox or Safari on a desktop computer has it.'

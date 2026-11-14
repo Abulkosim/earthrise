@@ -2,7 +2,8 @@
 
 For a set of south-pole points this writes the horizon profile (720 azimuths) from the
 reference model on the best maps we hold (20 m to 80 S, 240 m beyond), and the Sun and Earth
-series over a test window. Output: app/public/data/fixtures.json
+series over a test window. Output: app/public/data/fixtures-v2.json
+(v2: the reference uses the adjusted maps and nests 5 m, 20 m and 240 m, as the engine does)
 """
 import json
 from pathlib import Path
@@ -12,7 +13,7 @@ from earthrise_ref.horizon import horizon
 from earthrise_ref.proj import ll2xy
 from earthrise_ref.visibility import disk_fraction, horizon_at
 
-OUT = Path(__file__).resolve().parents[2] / "app" / "public" / "data" / "fixtures.json"
+OUT = Path(__file__).resolve().parents[2] / "app" / "public" / "data" / "fixtures-v2.json"
 MAST = 2.0
 POINTS = [  # name, lat, lon (deg east)
     ("Connecting ridge", -89.45, 222.69), ("Shackleton rim", -89.78, 204.0), ("Shackleton floor", -89.67, 129.2),
@@ -26,7 +27,7 @@ POINTS = [  # name, lat, lon (deg east)
 ]
 
 if __name__ == "__main__":
-    stack = dem.south("20m")
+    stack = dem.south("5m")  # adjusted maps: 5 m to 87 S, 20 m to 80 S, 240 m beyond
     t0 = ephem.et("2027-01-01T00:00:00")
     hours0 = (t0 - ephem.et(ephem.EPOCH)) / 3600.0
     n = 24 * 59  # two lunar days, hourly
@@ -35,7 +36,7 @@ if __name__ == "__main__":
     out = {"mast": MAST, "naz": 720, "window": {"hours0": hours0, "steps": n, "dt_hours": 1.0}, "points": []}
     for name, lat_d, lon_d in POINTS:
         lat, lon = np.radians(lat_d), np.radians(lon_d)
-        haz, hel, h0, _ = horizon(stack, lat, lon, mast=MAST, naz=720, d0=5.0)
+        haz, hel, h0, _ = horizon(stack, lat, lon, mast=MAST, naz=720, d0=1.25)
         saz, sel, sd = ephem.azel(sun, lat, lon, h0 + MAST)
         eaz, eel, _ = ephem.azel(earth, lat, lon, h0 + MAST)
         fs = disk_fraction(sel, horizon_at(saz, haz, hel), np.degrees(np.arcsin(695700.0 / sd)))
@@ -44,6 +45,7 @@ if __name__ == "__main__":
         x, y = ll2xy(lat, lon)
         out["points"].append({
             "name": name, "lat": lat_d, "lon": lon_d, "x": float(x), "y": float(y), "ground": h0,
+            "finest_m": 5 if float(np.hypot(x, y)) < 90000 else 20,
             "horizon": np.round(hel, 4).tolist(),
             "lit_mean": float(fs.mean()), "lit_any": float((fs > 0).mean()),
             "earth_clear": float((clear >= 0).mean()),
