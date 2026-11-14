@@ -601,6 +601,78 @@ export class Engine {
     }
     return ok / px
   }
+  /** 1 for every field pixel that meets the needs, else 0 (row 0 at the bottom). Null before an evaluation. */
+  passMask(needs: [number, number, number, number], maxPsrM = 0, slot = 0): Uint8Array | null {
+    if (!this.slotSteps[slot]) return null
+    const a = this.readState(0, slot), b = this.readState(1, slot), n = this.slotSteps[slot], px = a.length / 4
+    const d = maxPsrM > 0 ? this.psrDist : null
+    const out = new Uint8Array(px)
+    if (maxPsrM > 0 && !d) return out
+    for (let i = 0; i < px; i++) {
+      if (a[i * 4] / n >= needs[0] && a[i * 4 + 2] <= needs[1] && a[i * 4 + 3] / n >= needs[2] && b[i * 4 + 3] >= needs[3]
+        && (!d || d[i] <= maxPsrM)) out[i] = 1
+    }
+    return out
+  }
+
+  /**
+   * Landers do not land on the point they aim for. Of the ground within `radiusM` of a map point,
+   * what share meets the needs? This is the chance that a landing scattered evenly over that
+   * circle ends up somewhere the mission works. Null when the point is outside the field.
+   */
+  landingOdds(x: number, y: number, radiusM: number, needs: [number, number, number, number], maxPsrM = 0): { share: number; points: number } | null {
+    const r = this.slotRect[0]
+    const mask = this.passMask(needs, maxPsrM)
+    if (!r || !mask) return null
+    const [w, h] = this.fieldPx
+    const cx = ((x - r.x) / r.w) * w, cy = ((y - r.y) / r.h) * h
+    if (cx < 0 || cy < 0 || cx >= w || cy >= h) return null
+    const rp = Math.max(0.5, (radiusM / r.w) * w)
+    let ok = 0, all = 0
+    for (let j = Math.max(0, Math.floor(cy - rp)); j <= Math.min(h - 1, Math.ceil(cy + rp)); j++) {
+      for (let i = Math.max(0, Math.floor(cx - rp)); i <= Math.min(w - 1, Math.ceil(cx + rp)); i++) {
+        if ((i + 0.5 - cx) ** 2 + (j + 0.5 - cy) ** 2 > rp * rp) continue
+        all++; ok += mask[j * w + i]
+      }
+    }
+    return all ? { share: ok / all, points: all } : null
+  }
+
+  /**
+   * The best place to land in view: the point that meets the needs and has the most ground around
+   * it that also does (within `radiusM`), so a landing that misses by a few hundred metres still
+   * works. Ties go to the point with more sunlight. Null when nothing in view meets the needs.
+   */
+  bestPoint(needs: [number, number, number, number], maxPsrM = 0, radiusM = 500): { x: number; y: number; share: number } | null {
+    const r = this.slotRect[0]
+    const mask = this.passMask(needs, maxPsrM)
+    if (!r || !mask) return null
+    const [w, h] = this.fieldPx
+    const lit = this.readState(0, 0)
+    // summed-area table of the mask, to count passing pixels in a square around each pixel quickly
+    const W = w + 1, sat = new Uint32Array(W * (h + 1))
+    for (let j = 0; j < h; j++) {
+      let row = 0
+      for (let i = 0; i < w; i++) { row += mask[j * w + i]; sat[(j + 1) * W + i + 1] = sat[j * W + i + 1] + row }
+    }
+    const rp = Math.max(1, Math.round((radiusM / r.w) * w))
+    let best = -1, bestScore = -1
+    for (let j = 0; j < h; j++) {
+      for (let i = 0; i < w; i++) {
+        if (!mask[j * w + i]) continue
+        const x0 = Math.max(0, i - rp), x1 = Math.min(w, i + rp + 1), y0 = Math.max(0, j - rp), y1 = Math.min(h, j + rp + 1)
+        const cnt = sat[y1 * W + x1] - sat[y0 * W + x1] - sat[y1 * W + x0] + sat[y0 * W + x0]
+        // the window is always the full square in the denominator, so points at the edge of the view do not win by default
+        const score = cnt / ((2 * rp + 1) ** 2) + 1e-3 * (lit[(j * w + i) * 4] / Math.max(1, this.slotSteps[0]))
+        if (score > bestScore) { bestScore = score; best = j * w + i }
+      }
+    }
+    if (best < 0) return null
+    const bi = best % w, bj = Math.floor(best / w)
+    const x = r.x + ((bi + 0.5) / w) * r.w, y = r.y + ((bj + 0.5) / h) * r.h
+    return { x, y, share: this.landingOdds(x, y, radiusM, needs, maxPsrM)?.share ?? 0 }
+  }
+
   /** Whole metric layer as floats (row 0 at the bottom of the field). */
   readState(i: number, slot = 0): Float32Array {
     const gl = this.gl, [w, h] = this.fieldPx, out = new Float32Array(w * h * 4)

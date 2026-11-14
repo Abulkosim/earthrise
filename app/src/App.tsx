@@ -8,14 +8,28 @@ import { DataStore } from './engine/data'
 import type { Engine } from './engine/engine'
 import { computeSeries, landingWindows, ll2xy, sphereHorizon, summarize } from './model/sitecalc'
 import type { Horizon, Site } from './model/types'
-import { LAYERS, defaultBrief, fmtDate, fmtDateTime, fmtLat, fmtLon, type Brief as BriefT, type LayerId } from './state'
-import { Brief, LayerPicker } from './ui/Brief'
+import { useStable } from '@/lib/useStable'
+import { LAYERS, defaultBrief, fmtLat, fmtLon, type Brief as BriefT, type LayerId } from './state'
+import { MotionConfig } from 'motion/react'
+import { toast } from 'sonner'
+import { Toaster } from '@/components/ui/sonner'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { BriefPanel } from './ui/BriefPanel'
 import { Calendar, type CalendarData } from './ui/Calendar'
+import { CommandPalette } from './ui/CommandPalette'
+import { Header, type Demo, type Run } from './ui/Header'
+import { IntroDialog } from './ui/IntroDialog'
+import { LayerDock, LayerLegend } from './ui/LayerDock'
+import { LeftPanel, type LeftTab } from './ui/LeftPanel'
+import { MapNote } from './ui/MapNote'
 import { MapView, type Feature, type MapStatus, type MapViewState } from './ui/MapView'
-import { Replays, type Replay } from './ui/Replays'
+import { RealLandings, type Replay } from './ui/RealLandings'
 import { Ribbon } from './ui/Ribbon'
+import { SitePanel } from './ui/SitePanel'
 import { SiteSheet } from './ui/SiteSheet'
-import './App.css'
+import { StatusPill } from './ui/StatusPill'
+import { TimelineDock } from './ui/TimelineDock'
+import './ui/shell.css'
 
 const SITES = sitesJson as Site[]
 const FEATURES = featuresJson as Feature[]
@@ -242,7 +256,13 @@ function Main({ data }: { data: DataStore }) {
   }
   const toggleCompare = (s: Site) => setCompared((c) => (c.some((t) => t.id === s.id) ? c.filter((t) => t.id !== s.id) : [...c, s].slice(-6)))
 
-  const [coord, setCoord] = useState({ lat: '-89.45', lon: '222.69' })
+  // "Find a site" (the command palette) and the tab of the left panel
+  const [finding, setFinding] = useState(false)
+  const [leftTab, setLeftTab] = useState<LeftTab>('mission')
+  const goToCoords = (latTyped: number, lon: number) => {
+    const lat = Math.max(latTyped, -89.9999)
+    if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90) goTo(customSite(lat, ((lon % 360) + 360) % 360))
+  }
 
   // keep the address in step with the view (not while time is running: that would write 60 times a second)
   useEffect(() => {
@@ -259,7 +279,6 @@ function Main({ data }: { data: DataStore }) {
     const w = window as unknown as { __earthrise?: Record<string, unknown> }
     w.__earthrise = { ...(w.__earthrise ?? {}), data, ui: { setNow, setLayer, setBrief, setView, setSelected, setCompared, setPlaying, sites: SITES } }
   }, [data, setBrief])
-  const [copied, setCopied] = useState(false)
   // the timeline's name column: narrow on phones, so the lanes keep most of the width
   const [nameW, setNameW] = useState(() => (window.innerWidth < 700 ? 124 : 268))
   useEffect(() => {
@@ -269,7 +288,7 @@ function Main({ data }: { data: DataStore }) {
   }, [])
   const copyLink = () => {
     writeShared(data.epochMs, view, now, brief, layer, selected, compared)
-    void navigator.clipboard?.writeText(location.href).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000) })
+    void navigator.clipboard?.writeText(location.href).then(() => { toast('Link copied') })
   }
   const statusText =
     status.phase === 'loading' ? 'Loading terrain…'
@@ -279,128 +298,102 @@ function Main({ data }: { data: DataStore }) {
 
   const markers = useMemo(() => SITES.filter((s) => s.lat <= POLAR_LIMIT), [])
 
+  const onReplay = (r: Replay) => {
+    stopShows()
+    setReplay(r)
+    const t0 = data.hours(Date.parse(r.landingUtc)), t1 = data.hours(Date.parse(r.endUtc))
+    // each replay starts from a Sun-tracking array and applies what that lander needs
+    setBrief((b) => ({ ...b, landing: Math.round(t0), stayDays: Math.min(60, Math.max(1, Math.ceil((t1 - t0) / 24))), mission: { ...b.mission, panelFixed: false, ...(r.mission ?? {}) } }))
+    setNow(Math.round(t0))
+    setLayer('now')
+    const s = SITES.find((t) => t.id === r.siteId)
+    if (s) goTo(s)
+  }
+  // The same handlers with a fixed identity, so the memoised panels do not re-render on every
+  // progress tick of the engine (a slow shell makes the map think the GPU is slow).
+  const act = useStable({ showMonth, showSlip, showRidge, stopShows, copyLink, onReplay, goTo, goToCoords, find: () => setFinding(true), openIntro: () => setIntro(true) })
+  const demos = useMemo<Demo[]>(() => [
+    { title: 'A lunar month of light', explain: 'Time runs on from the landing date and the shadows turn with the Sun.', run: act.showMonth },
+    { title: 'A landing date that slips', explain: 'The landing moves five weeks later, and the ground that meets the brief changes with it.', run: act.showSlip },
+    { title: 'The view from the ridge', explain: 'Goes to the Shackleton connecting ridge and plays time there from the landing date.', run: act.showRidge },
+  ], [act])
+  // how far the running demonstration is, for the ring on the Stop button
+  const run = useMemo<Run | null>(
+    () => (slipping ? { kind: 'slip', at: brief.landing, span: 35 * 24 } : playing ? { kind: 'play', at: now, end: spanT0 + SPAN_H - 1 } : null),
+    [slipping, playing, brief.landing, now, spanT0],
+  )
+  const landingMs = data.epochMs + brief.landing * 3600e3
+
   return (
-    <div className="app">
-      <header className="top">
-        <h1 className="place">Earthrise</h1>
-        <p className="tag">Every landing site at the Moon’s south pole, every hour, on one map.</p>
-        <p className="shows">
-          Show me{' '}
-          <button type="button" className="text" onClick={showMonth}>a lunar month of light</button>
-          <button type="button" className="text" onClick={showSlip}>a landing date that slips</button>
-          <button type="button" className="text" onClick={showRidge}>the view from the ridge</button>
-          {(playing || slipping) && <button type="button" className="text" onClick={stopShows}>Stop</button>}
-        </p>
-        <p className="status narrow" role="status">{statusText}</p>
-        <nav>
-          <button type="button" className="text" onClick={() => setIntro(true)}>New here?</button>
-          <button type="button" className="text" onClick={copyLink}>{copied ? 'Link copied' : 'Copy a link to this view'}</button>
-          <a href={`${import.meta.env.BASE_URL}validation.html`}>How we know it is right</a>
-        </nav>
-      </header>
+    <MotionConfig reducedMotion="user">
+      <TooltipProvider>
+        <div className="app">
+          <Header
+            demos={demos} run={run} onStop={act.stopShows} onFind={act.find} onCopy={act.copyLink} onIntro={act.openIntro}
+            validationHref={`${import.meta.env.BASE_URL}validation.html`}
+          >
+            <LayerDock layer={layer} onChange={setLayer} />
+          </Header>
 
-      <div className="left">
-        <Brief brief={brief} epochMs={data.epochMs} onChange={setBrief} />
-        <LayerPicker layer={layer} brief={brief} onChange={setLayer} />
-        <section className="goto" aria-label="Go to a site">
-          <h2>Go to a site</h2>
-          <select aria-label="Known sites" value="" onChange={(e) => { const s = SITES.find((t) => t.id === e.target.value); if (s) goTo(s) }}>
-            <option value="">Pick a known site…</option>
-            {GROUPS.map(([kind, label]) => (
-              <optgroup key={kind} label={label}>
-                {SITES.filter((s) => s.kind === kind).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </optgroup>
-            ))}
-          </select>
-          <form className="coords" onSubmit={(e) => {
-            e.preventDefault()
-            const lat = Math.max(Number(coord.lat), -89.9999), lon = Number(coord.lon)
-            if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90) goTo(customSite(lat, ((lon % 360) + 360) % 360))
-          }}>
-            <label>Latitude <input value={coord.lat} inputMode="decimal" onChange={(e) => setCoord({ ...coord, lat: e.target.value })} /></label>
-            <label>Longitude east <input value={coord.lon} inputMode="decimal" onChange={(e) => setCoord({ ...coord, lon: e.target.value })} /></label>
-            <button type="submit" className="text">Go to these coordinates</button>
-          </form>
-        </section>
-        <Replays
-          replays={REPLAYS} activeId={replay?.id}
-          onReplay={(r) => {
-            stopShows()
-            setReplay(r)
-            const t0 = data.hours(Date.parse(r.landingUtc)), t1 = data.hours(Date.parse(r.endUtc))
-            // each replay starts from a Sun-tracking array and applies what that lander needs
-            setBrief((b) => ({ ...b, landing: Math.round(t0), stayDays: Math.min(60, Math.max(1, Math.ceil((t1 - t0) / 24))), mission: { ...b.mission, panelFixed: false, ...(r.mission ?? {}) } }))
-            setNow(Math.round(t0))
-            setLayer('now')
-            const s = SITES.find((t) => t.id === r.siteId)
-            if (s) goTo(s)
-          }}
-        />
-      </div>
+          <LeftPanel
+            tab={leftTab} onTab={setLeftTab}
+            mission={<BriefPanel brief={brief} epochMs={data.epochMs} onChange={setBrief} />}
+            landings={
+              <RealLandings replays={REPLAYS} activeId={replay?.id} onReplay={act.onReplay} />
+            }
+          />
 
-      <MapView
-        data={data} view={view} onView={setView} now={now} brief={brief} layer={layer} sites={markers}
-        selected={selected} compared={compared.map((s) => s.id)} features={FEATURES}
-        onPick={pick} onStatus={setStatus} span={span} onCalendar={setCalendar}
-        onEngine={(e) => { setEngine(e); const w = window as unknown as { __earthrise?: Record<string, unknown> }; w.__earthrise = { ...(w.__earthrise ?? {}), engine: e, data } }}
-      />
+          <MapView
+            data={data} view={view} onView={setView} now={now} brief={brief} layer={layer} sites={markers}
+            selected={selected} compared={compared.map((s) => s.id)} features={FEATURES}
+            onPick={pick} onStatus={setStatus} span={span} onCalendar={setCalendar}
+            onEngine={(e) => { setEngine(e); const w = window as unknown as { __earthrise?: Record<string, unknown> }; w.__earthrise = { ...(w.__earthrise ?? {}), engine: e, data } }}
+          />
 
-      {intro && (
-        <section className="intro" aria-label="The Moon's south pole in one minute">
-          <h2>The Moon’s south pole in one minute</h2>
-          <p>At the pole the Sun never climbs more than a couple of degrees. It circles the horizon once a month, so a hill a few kilometres away can hide it for days.</p>
-          <p>The Earth hangs low as well, and bobs up and down. When it drops behind the terrain, a lander cannot talk to home.</p>
-          <p>So where and when you land decides whether you have power and a radio link. This map works that out for every point at once, from NASA’s laser elevation maps.</p>
-          <p className="intro-actions">
-            <button type="button" className="text" onClick={() => { closeIntro(); showMonth() }}>Show me a lunar month of light</button>
-            <button type="button" className="text" onClick={() => { closeIntro(); showSlip() }}>Show me a landing date that slips</button>
-            <button type="button" className="text" onClick={closeIntro}>Close</button>
-          </p>
-        </section>
-      )}
-      {!intro && layer !== 'now' && status.phase !== 'idle' && (
-        <p className="map-note" role="status">
-          {status.phase === 'horizons'
-            ? `Tracing the horizon around every point in view… ${Math.round(status.progress * 100)}%`
-            : status.phase === 'mission' ? 'Running the stay at every point…' : 'Loading terrain…'}
-        </p>
-      )}
-      {!intro && status.pass !== null && layer !== 'now' && status.phase === 'idle' && (
-        <p className="map-note" role="status">
-          {status.pass === 0
-            ? `No ground in view meets the brief for a landing on ${fmtDate(data.epochMs + brief.landing * 3600e3)}. Drag the stay in the timeline to try other dates, or relax a need.`
-            : `${status.pass < 0.001 ? 'Under 0.1' : (status.pass * 100).toFixed(status.pass < 0.1 ? 1 : 0)}% of the ground in view meets the brief for a landing on ${fmtDate(data.epochMs + brief.landing * 3600e3)}.`}
-        </p>
-      )}
+          {/* the free cell over the map, between the panels */}
+          <div className="stage">
+            <LayerLegend layer={layer} brief={brief}>
+              <MapNote status={status} show={!intro && layer !== 'now'} landingMs={landingMs} />
+            </LayerLegend>
+            <StatusPill status={status} text={statusText} />
+          </div>
 
-      {selected && (
-        <SiteSheet
-          site={selected} horizon={horizons[hkey(selected)] ?? null} series={seriesOf[selected.id] ?? null}
-          summary={stayOf[selected.id] ?? null} psrM={psrOf(selected)}
-          now={now} brief={brief} epochMs={data.epochMs} compared={compared.some((s) => s.id === selected.id)}
-          onCompare={() => toggleCompare(selected)} onCentre={() => goTo(selected)} onClose={() => setSelected(null)}
-        />
-      )}
+          <SitePanel open={!!selected}>
+            {selected && (
+              <SiteSheet
+                site={selected} horizon={horizons[hkey(selected)] ?? null} series={seriesOf[selected.id] ?? null}
+                summary={stayOf[selected.id] ?? null} psrM={psrOf(selected)}
+                now={now} brief={brief} epochMs={data.epochMs} compared={compared.some((s) => s.id === selected.id)}
+                onCompare={() => toggleCompare(selected)} onCentre={() => goTo(selected)} onClose={() => setSelected(null)}
+              />
+            )}
+          </SitePanel>
 
-      <footer className="bottom" style={{ '--ribbon-name-w': `${nameW}px` } as React.CSSProperties}>
-        <div className="transport">
-          <button type="button" className="text" onClick={() => { setSlipping(false); setSpeed(12); setPlaying((v) => !v) }}>{playing ? 'Pause' : 'Play time'}</button>
-          <span className="clock narrow">{fmtDateTime(data.epochMs + now * 3600e3)} UTC</span>
-          <button type="button" className="text" onClick={() => setNow(brief.landing)}>Jump to landing</button>
+          <TimelineDock
+            nameWidth={nameW} epochMs={data.epochMs} now={now} landing={brief.landing} stayHours={stay}
+            playing={playing} onPlay={() => { setSlipping(false); setPlaying((v) => !v) }} onJump={() => setNow(brief.landing)}
+            speed={speed} onSpeed={setSpeed}
+          >
+            <Calendar
+              data={calendar} t0={spanT0} hours={SPAN_H} epochMs={data.epochMs} landing={brief.landing} nameWidth={nameW}
+              onLanding={(h) => setBrief((b) => ({ ...b, landing: Math.round(h) }))}
+            />
+            <Ribbon
+              rows={rows} t0={spanT0} hours={SPAN_H} epochMs={data.epochMs} now={now} landing={brief.landing}
+              stayHours={stay} batteryWh={brief.mission.batteryWh} selectedId={selected?.id}
+              onNow={(h) => { setPlaying(false); setNow(h) }} onLanding={(h) => setBrief((b) => ({ ...b, landing: Math.round(h) }))}
+              onSelect={(id) => { const s = compared.find((t) => t.id === id); if (s) setSelected(s) }}
+              onRemove={(id) => setCompared((c) => c.filter((t) => t.id !== id))}
+              onPan={(t) => setSpanT0(Math.min(data.maxHours - SPAN_H, Math.max(0, Math.round(t))))}
+              onFind={act.find}
+            />
+          </TimelineDock>
         </div>
-        <Calendar
-          data={calendar} t0={spanT0} hours={SPAN_H} epochMs={data.epochMs} landing={brief.landing} nameWidth={nameW}
-          onLanding={(h) => setBrief((b) => ({ ...b, landing: Math.round(h) }))}
-        />
-        <Ribbon
-          rows={rows} t0={spanT0} hours={SPAN_H} epochMs={data.epochMs} now={now} landing={brief.landing}
-          stayHours={stay} batteryWh={brief.mission.batteryWh} selectedId={selected?.id}
-          onNow={(h) => { setPlaying(false); setNow(h) }} onLanding={(h) => setBrief((b) => ({ ...b, landing: Math.round(h) }))}
-          onSelect={(id) => { const s = compared.find((t) => t.id === id); if (s) setSelected(s) }}
-          onRemove={(id) => setCompared((c) => c.filter((t) => t.id !== id))}
-          onPan={(t) => setSpanT0(Math.min(data.maxHours - SPAN_H, Math.max(0, Math.round(t))))}
-        />
-      </footer>
-    </div>
+
+        <CommandPalette open={finding} onOpenChange={setFinding} sites={SITES} groups={GROUPS} onSite={act.goTo} onCoords={act.goToCoords} />
+        <IntroDialog open={intro} onClose={closeIntro} onMonth={showMonth} onSlip={showSlip} />
+        <Toaster position="top-right" offset={{ top: 72, right: 14 }} mobileOffset={{ top: 12, right: 12 }} />
+      </TooltipProvider>
+    </MotionConfig>
   )
 }
