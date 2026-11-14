@@ -34,7 +34,7 @@ A second shader steps through time, 96 steps per draw, carrying its state in thr
 - Earth: its direction is taken from the lander, not the Moon's centre. Contact needs the Earth's centre to clear the horizon by the chosen margin and, if asked, a DSN complex that sees the Moon.
 - Battery: charge += (array W × disk fraction − load) × hours, capped at capacity, with the lit or dark load. At zero the lander is dead for the rest of the stay.
 
-Outputs per pixel: mean Sun fraction, longest dark run, contact share, longest silence, lowest charge, hours alive. "Where the mission works" passes a pixel when all of these meet the brief (default: 14 days from 3 Nov 2027, 2 m mast, 400 W array, 250 W lit and 60 W dark load, 1500 Wh battery, 1° Earth clearance with DSN). The "light at this moment" layer skips the cache and walks straight toward the Sun and the Earth for one instant.
+Outputs per pixel: mean Sun fraction, longest dark run, contact share, longest silence, lowest charge, hours alive, and the number of steps with any part of the Sun in view. "Where the mission works" passes a pixel when all of these meet the brief (default: 14 days from 3 Nov 2027, 2 m mast, 450 W array, 200 W lit and 40 W dark load, 3000 Wh battery, 1° Earth clearance with DSN; Sun at least 50% of the time, no dark stretch over 72 h, contact at least 30%, battery never empty) and, if the brief asks, permanent shadow is close enough (below). The "light at this moment" layer skips the cache and walks straight toward the Sun and the Earth for one instant.
 
 ## The disk fraction
 
@@ -48,15 +48,23 @@ The DSN bits mark which of Goldstone (35.4267° N, 243.1105° E), Madrid (40.431
 
 After the main run the engine repeats the stay in a second result slot, starting on each day of the 100-day timeline, with 2-hour steps, and records the share of pixels that meet the brief. Interrupted, it resumes; a new view or brief restarts it.
 
+## The long run and permanent shadow
+
+Once per bake, after the stay, `Engine.climate()` runs 18.6 years, one turn of the Moon's orbital plane, from 1 Jan 2023 in 12 h steps (13,587 steps) for every pixel, in a third result slot, at the brief's mast height. It takes about 2 s on an M2 Pro. The mean Sun fraction is the layer "Sunlight over 18.6 years". A pixel with no step in which any part of the Sun's disk clears its horizon is permanent shadow, where ice can last.
+
+The CPU then gives every pixel its distance to the nearest permanent shadow with an exact Euclidean distance transform (Felzenszwalb and Huttenlocher), rows then columns, times the field's cell size. Only shadow inside the view counts. That is the layer "Distance to permanent shadow" (0 to 6 km, the shadow itself black), the hover readout and the site panel's "Nearest permanent shadow".
+
+The brief has a sentence for the science team: permanent shadow within N km of the landing point (off by default; 2 km when switched on). When it is on, the map, the landing calendar, the timeline's landing-window lanes and the site verdict all apply it: a site farther away fails, with the distance given as the reason.
+
 ## Single sites
 
-A clicked site gets its own horizon from a probe shader (one column per point, one row per direction, 720 directions, 32-bit output) on the finest grid around it. The CPU then runs the same model in double precision, hourly, keeping the 0.0007° Sun parallax the map ignores. That drives the panorama, time to the next sunset or Earthset, the stay summary and per-site landing windows. Sites north of 60.5° S get a smooth-sphere horizon, a dip of acos(R / (R + mast)).
+A clicked site gets its own horizon from a probe shader (one column per point, one row per direction, 720 directions, 32-bit output) on the finest grid around it. The CPU then runs the same model in double precision, hourly, keeping the 0.0007° Sun parallax the map ignores. That drives the panorama, time to the next sunset or Earthset, the stay summary and per-site landing windows. The distance to permanent shadow is read from the map's long run at the site's pixel. Sites north of 60.5° S get a smooth-sphere horizon, a dip of acos(R / (R + mast)).
 
 ## What is checked against what
 
 - Ephemeris against JPL Horizons, Apollo touchdown Sun elevations and the Blue Ghost eclipse: [pipeline/tests/test_ephemeris.py](../pipeline/tests/test_ephemeris.py).
 - Geometry against closed forms (smooth-sphere dip, a ring wall, disk fraction): [pipeline/tests/test_geometry.py](../pipeline/tests/test_geometry.py).
 - GPU horizons and two-lunar-day shares against the reference at 24 points: [app/verify.html](../app/verify.html), fixtures from [pipeline/scripts/make_fixtures.py](../pipeline/scripts/make_fixtures.py).
-- 18.6-year averages against NASA Goddard's maps, observer on the surface, 12-hour steps: `app/verify.html?mode=goddard`.
+- 18.6-year averages against NASA Goddard's maps, observer on the surface, 12-hour steps: `app/verify.html?mode=goddard`. The validation page's live run also compares permanent shadow: of the points either map never lights, how many the other map never lights too.
 
 Results are in the [README](../README.md).
