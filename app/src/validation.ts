@@ -148,6 +148,7 @@ function horizonSection() {
     h('h2', {}, 'The terrain horizon'),
     p('Knowing where the Sun is helps only if you also know what blocks it. At the pole the Sun never climbs more than about a degree and a half above the horizon, so a ridge 10 km away decides whether a site is lit.'),
     p('The GPU engine walks the LOLA terrain outward from every pixel of the view in 360 directions and keeps the highest angle it meets: the horizon. It reads 20 m terrain close to the point and coarser maps further out, up to 400 km away, and it allows for the curve of the Moon. On our M2 Pro it does this for about 265,000 points in 3 to 5 seconds. Then it runs the mission hour by hour against those horizons.'),
+    p('It also runs 18.6 years in 12-hour steps against the same horizons, marks the ground that never sees any part of the Sun as permanent shadow, and measures how far every point is from it.'),
     p('Fast code is easy to get wrong, so we also wrote a slow reference model in Python that does the same walk one point at a time, in 720 directions, on the full-resolution maps. We picked 24 hard points near the pole: ridges, crater rims and crater floors that never see the Sun. For each we compare the horizon in all 720 directions, and then the share of time the Sun is up and the Earth is in view over two lunar days (59 days from 1 January 2027, hourly, with a 2 m mast).'),
     p(h('strong', {}, 'Our run: '), 'the horizon differed by 0.008 degrees on average, and the sunlit and Earth-contact shares agreed within 0.2 percentage points at every one of the 24 points.'),
     p(cls('note', 'The button runs the same comparison on your GPU. It downloads the terrain around each point, a few tens of megabytes in all, and can take a minute or two. To finish sooner it computes a smaller patch of map around each point than our run did; the point itself is computed the same way.')),
@@ -182,6 +183,8 @@ function goddardSection() {
   const t = table(head, rows, 'Shares of time in percentage points. Bias is ours minus theirs: positive means we see the body slightly more often.')
   // the "your browser" rows: first cell holds the label, the rest fill in after a run
   const yourRows = Array.from(t.querySelectorAll('tbody tr')).filter((_, i) => i % 2 === 1)
+  // permanent shadow: no stored number from our run yet, only the live one
+  const psrResult = p(h('strong', {}, 'Your browser: '), cls('muted', 'press the button below to compute it.'))
   const fill = (res: GoddardResult) => {
     ;(['sun', 'earth'] as const).forEach((b, i) => {
       const s = res[b], tds = yourRows[i].children
@@ -190,6 +193,10 @@ function goddardSection() {
       tds[3].textContent = `${(s.mae * 100).toFixed(2)} points`
       tds[4].textContent = `${signed(s.bias * 100)} points`
     })
+    const ps = res.psr, n = (v: number) => v.toLocaleString('en-US')
+    psrResult.replaceChildren(h('strong', {}, 'Your browser: '),
+      ps.theirs ? `of the ${n(ps.theirs)} points Goddard's map calls permanently shadowed, ${pct(ps.oursOfTheirs)} are permanently shadowed in ours. ` : 'Goddard\'s map calls none of the compared points permanently shadowed. ',
+      ps.ours ? `Of the ${n(ps.ours)} points permanently shadowed in ours, ${pct(ps.theirsOfOurs)} are permanently shadowed in theirs.` : 'None of the compared points is permanently shadowed in ours.')
   }
   const cvOurs = h('canvas', { width: '512', height: '512', 'aria-label': 'Average sunlight computed in this browser' })
   const cvTheirs = h('canvas', { width: '512', height: '512', 'aria-label': 'Average sunlight from the NASA Goddard map' })
@@ -212,6 +219,10 @@ function goddardSection() {
     p('The LOLA team at NASA Goddard published maps of the south pole that give, for every 60 m pixel, the share of time the Sun and the Earth are above the terrain horizon, averaged over 18.6 years. That is one full turn of the Moon\'s orbital plane, so every combination of seasons and Earth positions is in it. The maps are AVGVISIB_85S_060M_201608, made with the method of Mazarico et al. 2011. They answer the same question as Earthrise with different people, different code and an older terrain model, which makes them a good outside check.'),
     p('We run our engine over the same 18.6 years in 12-hour steps for 262,144 points in a 41 km square centred on the pole, with the observer on the surface, and compare point by point. For the Earth we count any part of its disc, as their map does.'),
     t,
+    h('h3', {}, 'Permanent shadow'),
+    p('Ground that never sees any part of the Sun can hold ice, and the app lets a brief ask for it near the landing point. Among the compared points, we count those that are never lit in Goddard\'s map (a stored value of 0) and those that are never lit in ours (no 12-hour step with any part of the Sun over the 18.6 years), and how many are both.'),
+    p(cls('note', 'We have no stored number from our own run for this yet. It is computed live only, when you press the button.')),
+    psrResult,
     p('Their map uses a 60 m elevation model from 2016; ours uses the 20 m LOLA map. So some difference is expected even if both are right.'),
     p(cls('note', 'The button runs the same comparison on your GPU. It downloads a 61 km crop of each published map, about 2.4 MB, and the terrain around the pole.')),
     run, maps, mapNote,
@@ -239,6 +250,7 @@ function limitsSection() {
     'DSN visibility uses the IAU model of the Earth\'s rotation and a 10 degree elevation mask at the three complexes.',
     'The map\'s horizon cache stores each angle in 10 bits: steps of 0.02 degrees near the pole, coarser where the Sun and Earth can stand higher. The site panel uses full precision.',
     'Sites north of 60° S have no terrain in the app and use a smooth-sphere horizon. The app says so.',
+    'Permanent shadow is found in 12-hour steps on the map\'s own grid of points, so a shadow smaller than one of its cells can be missed. The distance to it counts only shadow inside the view.',
     'The ephemeris table runs from 2023 to 2044.',
   ]
   return [h('h2', {}, 'What the model leaves out'), h('ul', {}, ...items.map((s) => h('li', {}, s)))]
