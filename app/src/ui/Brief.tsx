@@ -35,7 +35,7 @@ export function Brief(p: { brief: BriefT; epochMs: number; onChange(b: BriefT): 
         Land on{' '}
         <input
           type="date" aria-label="Landing date (UTC)" className="date" value={toInputDate(p.epochMs + b.landing * 3600e3)}
-          min="2024-01-02" max="2044-10-01"
+          min="2023-01-02" max="2044-10-01"
           onChange={(e) => {
             const ms = Date.parse(e.target.value + 'T00:00:00Z')
             if (Number.isFinite(ms)) p.onChange({ ...b, landing: (ms - p.epochMs) / 3600e3 })
