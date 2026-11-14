@@ -1,19 +1,29 @@
-/* Written with AI assistance (Claude); see the README. */
+/* Written with AI assistance (Claude); see the README.
+
+   The ribbon inside the timeline dock: the time axis with the playhead and the stay bracket, then
+   one row per compared site. The rows scroll when there are more than fit; the axis stays put.
+   --ribbon-name-w comes from the dock, --lane-pad is the right margin shared with the calendar. */
 
 .ribbon {
-  --ribbon-name-w: 200px;
-  --axis-h: 66px;
-  --row-bg: var(--ground-1);
-  background: var(--ground-1);
+  --axis-h: 56px;
+  --lane-track: rgba(255, 255, 255, 0.045);
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
   color: var(--dust-1);
   font-family: var(--font-ui);
-  font-size: var(--t-sm);
+  font-size: 13px;
   user-select: none;
   -webkit-user-select: none;
 }
 
 .ribbon-chart {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
   overscroll-behavior-x: contain;
 }
 
@@ -21,17 +31,14 @@
 .ribbon-row {
   display: grid;
   grid-template-columns: var(--ribbon-name-w) minmax(0, 1fr);
+  padding-right: var(--lane-pad, 0px);
 }
+.ribbon-head { flex: none; }
 
-.ribbon-head { border-bottom: var(--rule); }
-
-.ribbon-utc {
-  padding: 20px var(--gap-3) 0 0;
-  text-align: right;
-  font-size: var(--t-xs);
-  line-height: 14px;
-  color: var(--dust-3);
-}
+.ribbon-utc { position: relative; color: var(--dust-3); font-size: 11.5px; line-height: 14px; text-align: right; }
+.ribbon-utc > span { position: absolute; right: 14px; }
+.ribbon-utc > span:first-child { top: 17px; }
+.ribbon-hint { top: 40px; color: var(--dust-3); }
 
 /* ---------- axis ---------- */
 
@@ -45,59 +52,65 @@
 
 .ribbon-ticks { position: absolute; top: 0; left: 0; display: block; }
 .ribbon-ticks path { fill: none; stroke-width: 1; shape-rendering: crispEdges; }
-.ribbon-tick-day { stroke: var(--ground-3); }
-.ribbon-tick-week { stroke: var(--dust-3); }
-.ribbon-tick-month { stroke: var(--dust-2); }
+.ribbon-tick-day { stroke: rgba(255, 255, 255, 0.1); }
+.ribbon-tick-week { stroke: rgba(255, 255, 255, 0.24); }
+.ribbon-tick-month { stroke: rgba(255, 255, 255, 0.5); }
 
 .ribbon-label {
   position: absolute;
-  top: 20px;
-  font-size: var(--t-xs);
+  top: 17px;
+  font-size: 11.5px;
   line-height: 14px;
   color: var(--dust-3);
   white-space: nowrap;
   pointer-events: none;
 }
-.ribbon-label.is-month { color: var(--dust-2); }
+.ribbon-label.is-month { color: var(--dust-1); font-weight: 600; }
 
 /* playhead handle and its time */
 .ribbon-handle {
   position: absolute;
   top: 0;
   width: 15px;
-  height: 14px;
+  height: 15px;
   cursor: ew-resize;
   touch-action: none;
+  border-radius: 999px;
 }
 .ribbon-handle::before {
   content: '';
   position: absolute;
-  left: 4px;
+  left: 3px;
   top: 1px;
-  width: 7px;
-  height: 11px;
+  width: 9px;
+  height: 13px;
+  border-radius: 999px;
   background: var(--dust-1);
-  border-radius: 1px;
+  box-shadow: 0 0 10px rgba(242, 238, 230, 0.55);
+  transition: transform 140ms ease;
 }
-.ribbon-handle.is-off::before { background: var(--dust-3); }
+.ribbon-handle:hover::before, .ribbon-handle:focus-visible::before { transform: scaleX(1.25); }
+.ribbon-handle.is-off::before { background: var(--dust-3); box-shadow: none; }
 
 .ribbon-now {
   position: absolute;
   top: 0;
-  font-size: var(--t-xs);
-  line-height: 14px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 15px;
   color: var(--dust-1);
   white-space: nowrap;
   pointer-events: none;
 }
 
-/* the stay bracket */
+/* the stay bracket: a capsule that drags the landing date */
 .ribbon-stay {
   position: absolute;
-  top: 44px;
-  height: 20px;
+  top: 38px;
+  height: 18px;
   cursor: grab;
   touch-action: none;
+  border-radius: 999px;
 }
 .ribbon-stay:active { cursor: grabbing; }
 .ribbon-stay::before {
@@ -105,122 +118,215 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: 9px;
-  height: 1px;
-  background: var(--dust-2);
+  top: 2px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(242, 238, 230, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(242, 238, 230, 0.28);
+  transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+.ribbon-stay:hover::before, .ribbon-stay:active::before {
+  background: rgba(242, 238, 230, 0.17);
+  box-shadow: inset 0 0 0 1px rgba(242, 238, 230, 0.5), 0 0 14px rgba(242, 238, 230, 0.16);
 }
 
+/* grips at the two ends; the cap's outer edge is exactly the landing and the end of the stay
+   (scripts/deck.mjs reads the start cap's position) */
 .ribbon-stay-cap {
   position: absolute;
-  top: 4px;
-  width: 1px;
-  height: 11px;
-  background: var(--dust-2);
+  top: 5px;
+  width: 6px;
+  height: 8px;
+}
+.ribbon-stay-cap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--dust-1);
 }
 .ribbon-stay-cap.is-start { left: 0; }
+.ribbon-stay-cap.is-start::after { right: 0; }
 .ribbon-stay-cap.is-end { right: 0; }
+.ribbon-stay-cap.is-end::after { left: 0; }
 
 .ribbon-stay-label {
   position: absolute;
   top: 0;
-  padding: 0 var(--gap-1);
-  font-size: var(--t-xs);
-  line-height: 20px;
+  padding: 0 6px;
+  font-size: 11.5px;
+  line-height: 18px;
   color: var(--dust-2);
   white-space: nowrap;
-  background: var(--ground-1);
 }
 .ribbon-stay-label.is-start.is-outside { right: 100%; margin-right: 2px; }
-.ribbon-stay-label.is-start.is-inside { left: 3px; }
+.ribbon-stay-label.is-start.is-inside { left: 8px; }
+.ribbon-stay-label.is-start.is-after { left: 100%; margin-left: 2px; }
 .ribbon-stay-label.is-end.is-outside { left: 100%; margin-left: 2px; }
-.ribbon-stay-label.is-end.is-inside { right: 3px; }
-.ribbon-stay-date { color: var(--dust-1); }
+.ribbon-stay-label.is-end.is-inside { right: 8px; }
+.ribbon-stay-date { color: var(--dust-1); font-weight: 600; }
 
 /* ---------- rows ---------- */
 
-.ribbon-row {
-  background: var(--row-bg);
-  border-bottom: var(--rule);
+.ribbon-rows {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+  padding-bottom: 10px;
 }
-.ribbon-row.is-selected { --row-bg: var(--ground-2); }
+.ribbon-rows::-webkit-scrollbar { display: none; }
+/* soft edges where more rows are hidden */
+.ribbon-rows[data-more-down='true'] { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent); }
+.ribbon-rows[data-more-up='true'] { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 28px); mask-image: linear-gradient(to bottom, transparent, #000 28px); }
+.ribbon-rows[data-more-up='true'][data-more-down='true'] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 28px, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 28px, #000 calc(100% - 36px), transparent);
+}
+
+.ribbon-row {
+  position: relative;
+  /* inset 6 px so the hover and selection fill has room for its round corners; the lanes still
+     start and end exactly under the axis */
+  grid-template-columns: calc(var(--ribbon-name-w) - 6px) minmax(0, 1fr);
+  margin: 0 6px;
+  padding-right: calc(var(--lane-pad, 0px) - 6px);
+  border-radius: 14px;
+  transition: background-color 140ms ease;
+}
+.ribbon-row + .ribbon-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background: var(--hairline);
+}
+.ribbon-row:hover { background: rgba(255, 255, 255, 0.035); }
+.ribbon-row.is-selected { background: rgba(255, 255, 255, 0.07); }
+.ribbon-row:hover::before, .ribbon-row:hover + .ribbon-row::before,
+.ribbon-row.is-selected::before, .ribbon-row.is-selected + .ribbon-row::before { opacity: 0; }
+.ribbon-row.is-selected::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--dust-1);
+  box-shadow: 0 0 10px rgba(242, 238, 230, 0.5);
+}
 
 .ribbon-name {
   min-width: 0;
-  padding: var(--gap-2) var(--gap-3) var(--gap-2) var(--gap-4);
+  padding: 6px 10px 6px 12px;
 }
 
 .ribbon-name-line {
   display: flex;
-  align-items: baseline;
-  gap: var(--gap-2);
+  align-items: center;
+  gap: 4px;
   min-width: 0;
+  height: 20px;
 }
 
 .ribbon-site {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
   background: none;
   color: var(--dust-1);
-  font-size: var(--t-md);
-  line-height: 1.3;
   text-align: left;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  border-radius: 6px;
 }
 button.ribbon-site { cursor: pointer; }
+.ribbon-site-main {
+  flex: 0 0 auto;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 16px;
+  line-height: 20px;
+}
+.ribbon-region {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--dust-3);
+  font-size: 11.5px;
+  font-stretch: 85%;
+}
 
 .ribbon-remove {
   flex: none;
-  margin: 0 0 0 auto;
-  padding: 0;
-  border: 0;
-  background: none;
+  margin-left: auto;
   color: var(--dust-3);
-  font-size: var(--t-xs);
-  cursor: pointer;
   opacity: 0;
 }
 .ribbon-row:hover .ribbon-remove,
 .ribbon-row:focus-within .ribbon-remove { opacity: 1; }
-.ribbon-remove:hover { color: var(--dust-1); }
+@media (hover: none) { .ribbon-remove { opacity: 1; } }
 
 .ribbon-summary {
   display: flex;
   flex-wrap: wrap;
-  column-gap: var(--gap-3);
-  font-size: var(--t-xs);
-  line-height: 1.35;
+  column-gap: 10px;
+  margin-top: 1px;
+  font-size: 12px;
+  line-height: 16px;
   color: var(--dust-2);
 }
-.ribbon-dies { color: var(--dust-1); }
+.ribbon-summary > span, .ribbon-dies { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ribbon-summary .dot, .ribbon-dies .dot { width: 5px; height: 5px; }
+.ribbon-dies { display: flex; font-size: 12px; line-height: 16px; color: var(--dust-1); }
 
 .ribbon-lanes {
   display: flex;
   align-items: center;
   min-width: 0;
-  padding: var(--gap-2) 0;
+  padding: 8px 0;
+  cursor: crosshair;
 }
 .ribbon-lanes-inner { position: relative; flex: 1; min-width: 0; }
 .ribbon-canvas { display: block; }
 
-.ribbon-legend {
-  position: absolute;
-  left: 0;
-  padding: 0 var(--gap-1) 0 2px;
-  font-size: var(--t-xs);
-  color: var(--dust-3);
-  background: var(--row-bg);
-  pointer-events: none;
-}
+/* ---------- nothing compared yet ---------- */
 
 .ribbon-empty {
-  margin: 0;
-  padding: var(--gap-4) 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 2px 6px 0;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.ribbon-empty-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: var(--raised);
   color: var(--dust-2);
 }
+.ribbon-empty-icon svg { width: 18px; height: 18px; }
+.ribbon-empty-text { flex: 1 1 auto; min-width: 0; color: var(--dust-2); font-size: 13px; line-height: 1.4; }
+.ribbon-empty-title { color: var(--dust-1); font-weight: 600; }
 
 /* ---------- stay band and playhead through the rows ---------- */
 
@@ -229,34 +335,45 @@ button.ribbon-site { cursor: pointer; }
   top: 0;
   bottom: 0;
   left: var(--ribbon-name-w);
-  right: 0;
+  right: var(--lane-pad, 0px);
   overflow: hidden;
   pointer-events: none;
 }
 
 .ribbon-band {
   position: absolute;
-  top: calc(var(--axis-h) + 1px);
+  top: var(--axis-h);
   bottom: 0;
-  background: var(--dust-1);
-  opacity: 0.04;
+  background: linear-gradient(to bottom, rgba(242, 238, 230, 0.07), rgba(242, 238, 230, 0.03));
+  border-radius: 0 0 6px 6px;
 }
 
 .ribbon-playline {
   position: absolute;
-  top: 12px;
+  top: 14px;
   bottom: 0;
   width: 1px;
   background: var(--dust-1);
+  box-shadow: 0 0 6px rgba(242, 238, 230, 0.5);
 }
 
-/* ---------- hover readout ---------- */
+/* ---------- hover readout, when the ribbon is not in the dock ---------- */
 
 .ribbon-readout {
-  min-height: calc(var(--t-xs) * 1.45 + var(--gap-2) * 2);
-  padding: var(--gap-2) var(--gap-4);
-  font-size: var(--t-xs);
-  line-height: 1.45;
-  color: var(--dust-2);
+  min-height: 34px;
+  padding: 6px 16px;
+  font-size: 12px;
 }
-.ribbon-readout .place { color: var(--dust-1); }
+
+@media (max-width: 1099.98px) {
+  .ribbon-rows { overflow: visible; -webkit-mask-image: none !important; mask-image: none !important; }
+}
+@media (max-width: 699.98px) {
+  .ribbon-name { padding: 8px 6px 8px 8px; }
+  .ribbon-site-main { font-size: 14px; }
+  .ribbon-region { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .ribbon-summary { column-gap: 8px; font-size: 11px; }
+  .ribbon-hint { display: none; }
+  .ribbon-utc > span { right: 8px; }
+  .ribbon-empty { flex-wrap: wrap; }
+}
