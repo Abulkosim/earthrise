@@ -11,6 +11,11 @@ export interface LevelInfo {
   dtype?: 'int16' | 'int32' // int32: centimetres with a plane predictor (see build_web_data.py); default: int16 in 0.5 m steps, row deltas
   scale_m?: number
   missing?: string[]        // "row_col" of tiles inside the grid that hold no data
+  // Where this level's tiles are served from, when not beside the manifest. A host that limits the
+  // size of a site (GitHub Pages: 1 GB) gets the levels spread over several sites; the largest level
+  // is cut in two by tile row.
+  base?: string
+  bases?: { split_row: number; urls: string[] }
 }
 export interface Manifest {
   dem: {
@@ -116,7 +121,9 @@ export class DataStore {
     const key = `${l}/${r}_${c}`
     let p = this.tiles.get(key)
     if (!p) {
-      p = this.hasTile(l, r, c) ? loadGrid(`${this.base}dem/${key}.bin.gz`, TILE, this.level(l)).catch(() => null) : Promise.resolve(null)
+      const lv = this.level(l)
+      const base = lv.bases ? lv.bases.urls[r < lv.bases.split_row ? 0 : 1] : lv.base ?? this.base
+      p = this.hasTile(l, r, c) ? loadGrid(`${base}dem/${key}.bin.gz`, TILE, lv).catch(() => null) : Promise.resolve(null)
       this.tiles.set(key, p)
     }
     return p
