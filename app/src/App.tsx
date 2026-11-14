@@ -250,7 +250,10 @@ function Main({ data }: { data: DataStore }) {
     setSelected(s)
     if (s.lat <= POLAR_LIMIT) {
       const [x, y] = ll2xy(s.lat, s.lon)
-      setView((v) => ({ cx: x, cy: y, mpp: Math.min(v.mpp, 60) }))
+      // Beyond 80 S the terrain is coarse (hundreds of metres a sample): stay far enough out that
+      // the map shows landforms and not the samples themselves.
+      const floor = Math.hypot(x, y) > 300e3 ? 320 : 0
+      setView((v) => ({ cx: x, cy: y, mpp: Math.max(floor, Math.min(v.mpp, 60)) }))
     }
   }
   const pick = (lat: number, lon: number, site?: Site) => {
@@ -283,16 +286,20 @@ function Main({ data }: { data: DataStore }) {
     const w = window as unknown as { __earthrise?: Record<string, unknown> }
     w.__earthrise = { ...(w.__earthrise ?? {}), data, ui: { setNow, setLayer, setBrief, setView, setSelected, setCompared, setPlaying, sites: SITES } }
   }, [data, setBrief])
-  // the timeline's name column: narrow on phones, so the lanes keep most of the width
-  const [nameW, setNameW] = useState(() => (window.innerWidth < 700 ? 124 : 268))
+  // the timeline's name column. On a phone it is only a gutter for the "UTC" label: each site's
+  // name and numbers sit on a line of their own above its lanes (see Ribbon.css), so nothing is cut short
+  const [nameW, setNameW] = useState(() => (window.innerWidth < 700 ? 44 : 268))
   useEffect(() => {
-    const on = () => setNameW(window.innerWidth < 700 ? 124 : 268)
+    const on = () => setNameW(window.innerWidth < 700 ? 44 : 268)
     window.addEventListener('resize', on)
     return () => window.removeEventListener('resize', on)
   }, [])
   const copyLink = () => {
     writeShared(data.epochMs, view, now, brief, layer, selected, compared)
-    void navigator.clipboard?.writeText(location.href).then(() => { toast('Link copied') })
+    // no clipboard (an insecure origin, a refused permission): say where the link is instead of saying nothing
+    const failed = () => { toast('The link is in the address bar') }
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(location.href).then(() => { toast('Link copied') }, failed)
+    else failed()
   }
   const statusText =
     status.phase === 'loading' ? 'Loading terrain…'

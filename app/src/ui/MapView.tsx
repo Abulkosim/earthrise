@@ -395,6 +395,25 @@ export function MapView(p: Props) {
       labels.push({ id: p.selected.id, name: p.selected.name, px: customSel.px, py: customSel.py, sel: true })
     }
   }
+  // Two names on top of each other read as neither: the selected site keeps its name, then the
+  // compared ones, and a name that would cover one already placed is left out (its ring stays).
+  const rank = (l: { id: string; sel: boolean }) => (l.sel ? 0 : p.compared.includes(l.id) ? 1 : 2)
+  const placedLabels: { x0: number; x1: number; y: number }[] = []
+  const shownLabels: ((typeof labels)[number] & { at: 'right' | 'left' | 'above'; lx: number; ly: number })[] = []
+  for (const l of [...labels].sort((a, b) => rank(a) - rank(b))) {
+    // width from the letter count: close enough for a collision test, and no layout read per frame
+    const off = l.sel ? 15 : 11, w = l.name.length * (l.sel ? 7.6 : 6.9) + (l.sel ? 22 : 18)
+    // Right of the ring while that stays on the map the panels leave free; otherwise left of it;
+    // and when neither side has room (a long name on a phone), above it.
+    const inFree = l.px >= free.l && l.px <= free.r
+    const lo = (inFree ? free.l : 0) + 6, hi = (inFree ? free.r : W) - 6
+    const at = l.px + off + w <= hi ? 'right' : l.px - off - w >= lo ? 'left' : hi - lo >= w ? 'above' : 'right'
+    const x0 = at === 'right' ? l.px + off : at === 'left' ? l.px - off - w : Math.min(hi - w, Math.max(lo, l.px - w / 2))
+    const ly = at === 'above' ? l.py - (l.sel ? 30 : 24) : l.py
+    if (placedLabels.some((q) => x0 < q.x1 + 4 && q.x0 < x0 + w + 4 && Math.abs(q.y - ly) < 22)) continue
+    placedLabels.push({ x0, x1: x0 + w, y: ly })
+    shownLabels.push({ ...l, at, lx: at === 'right' ? x0 : at === 'left' ? x0 + w : x0 + w / 2, ly })
+  }
 
   const scaleKm = (() => {
     const target = (140 * mpp) / 1000
@@ -460,8 +479,8 @@ export function MapView(p: Props) {
       )}
       {overlay && (
         <div className="map-marks" aria-hidden="true">
-          {labels.map((l) => (
-            <span key={l.id} className={`site-label place${l.sel ? ' sel' : ''}`} style={{ translate: `${Math.round(l.px + (l.sel ? 15 : 11))}px ${Math.round(l.py)}px` }}>{l.name}</span>
+          {shownLabels.map((l) => (
+            <span key={l.id} className={`site-label place${l.sel ? ' sel' : ''} at-${l.at}`} style={{ translate: `${Math.round(l.lx)}px ${Math.round(l.ly)}px` }}>{l.name}</span>
           ))}
           {selMark && <span className="site-pulse" style={{ translate: `${selMark.px}px ${selMark.py}px` }} />}
           <span className="toward-mark is-sun" data-side={sunEdge.side} style={{ translate: `${sunEdge.x}px ${sunEdge.y}px` }}><i /><b>to the Sun</b></span>

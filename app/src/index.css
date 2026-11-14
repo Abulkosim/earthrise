@@ -35,14 +35,14 @@
   --fail: #f0705c; /* a need that fails; small marks only */
 
   /* glass */
-  --glass-bg: rgba(20, 20, 23, 0.62);
+  --glass-bg: rgba(18, 18, 21, 0.76);
   --glass-bg-quiet: rgba(20, 20, 23, 0.86); /* small pills: no blur, so more ink */
   --glass-bg-pop: rgba(24, 24, 27, 0.9); /* popovers, menus, dialogs */
   --glass-border: rgba(255, 255, 255, 0.09);
   --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   --glass-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.6);
   /* brightness keeps text at 4.5:1 when sunlit ground lies behind a panel */
-  --glass-blur: blur(20px) saturate(1.3) brightness(0.5);
+  --glass-blur: blur(30px) saturate(1.2) brightness(0.45);
   --raised: rgba(255, 255, 255, 0.06); /* chips, inputs, buttons */
   --raised-hover: rgba(255, 255, 255, 0.1);
   --hairline: rgba(255, 255, 255, 0.07);
