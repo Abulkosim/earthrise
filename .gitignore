@@ -7,3 +7,4 @@ __pycache__/
 .DS_Store
 # built from NASA sources by pipeline/scripts/build_web_data.py
 app/public/data/
+app/public/data
