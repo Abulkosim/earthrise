@@ -6,12 +6,20 @@ export const TILE = 512
 // Far below anything real, so that a bilinear blend with a valid neighbour still reads as no data.
 export const NODATA_M = -1e9
 
-export interface LevelInfo { n: number; res: number; source: string }
+export interface LevelInfo {
+  n: number; res: number; source: string
+  dtype?: 'int16' | 'int32' // int32: centimetres with a plane predictor (see build_web_data.py); default: int16 in 0.5 m steps, row deltas
+  scale_m?: number
+  missing?: string[]        // "row_col" of tiles inside the grid that hold no data
+}
 export interface Manifest {
   dem: {
     far: LevelInfo & { file: string }
     mid: LevelInfo & { file: string }
-    tiles: { size: number; nodata: number; t80: LevelInfo; t40: LevelInfo; t20: LevelInfo & { max_radius_m: number } }
+    tiles: {
+      size: number; nodata: number; t80: LevelInfo; t40: LevelInfo; t20: LevelInfo & { max_radius_m: number }
+      t10?: LevelInfo; t5?: LevelInfo // 85-90 S at 10 m and 87.5-90 S at 5 m; absent in older data builds
+    }
   }
   ephem: { file: string; epoch_utc: string; step_s: number; rows: number; dsn: { stations: string[]; mask_deg: number } }
 }
@@ -28,10 +36,24 @@ async function fetchBytes(url: string): Promise<ArrayBuffer> {
 }
 
 /** A height grid in metres. Rows run north to south on the map (+y first). */
-export async function loadGrid(url: string, n: number): Promise<Float32Array> {
+export async function loadGrid(url: string, n: number, info?: LevelInfo): Promise<Float32Array> {
+  const out = new Float32Array(n * n)
+  if (info?.dtype === 'int32') {
+    // Each stored value is the height's residual from the plane through its left, upper and
+    // upper-left neighbours. A running sum along rows, then along columns, brings the heights back.
+    // int32 sums wrap by themselves in a typed array.
+    const d = new Int32Array(await fetchBytes(url)), k = info.scale_m ?? 0.01
+    if (d.length !== n * n) throw new Error(`${url}: expected ${n * n} samples, got ${d.length}`)
+    for (let r = 0; r < n; r++) {
+      const o = r * n
+      for (let c = 1; c < n; c++) d[o + c] += d[o + c - 1]
+      if (r > 0) for (let c = 0; c < n; c++) d[o + c] += d[o - n + c]
+    }
+    for (let i = 0; i < n * n; i++) out[i] = d[i] === -2147483648 ? NODATA_M : d[i] * k
+    return out
+  }
   const d = new Int16Array(await fetchBytes(url))
   if (d.length !== n * n) throw new Error(`${url}: expected ${n * n} samples, got ${d.length}`)
-  const out = new Float32Array(n * n)
   for (let r = 0; r < n; r++) {
     let acc = 0
     const o = r * n
@@ -43,7 +65,7 @@ export async function loadGrid(url: string, n: number): Promise<Float32Array> {
   return out
 }
 
-export type TileLevel = 't20' | 't40' | 't80'
+export type TileLevel = 't5' | 't10' | 't20' | 't40' | 't80'
 
 export class DataStore {
   manifest!: Manifest
@@ -59,8 +81,8 @@ export class DataStore {
     this.manifest = await (await fetch(this.base + 'manifest.json')).json()
     const d = this.manifest.dem
     const [far, mid, eph] = await Promise.all([
-      loadGrid(this.base + d.far.file, d.far.n),
-      loadGrid(this.base + d.mid.file, d.mid.n),
+      loadGrid(this.base + d.far.file, d.far.n, d.far),
+      loadGrid(this.base + d.mid.file, d.mid.n, d.mid),
       fetch(this.base + this.manifest.ephem.file).then((r) => r.arrayBuffer()),
     ])
     this.far = far
@@ -69,12 +91,20 @@ export class DataStore {
     this.epochMs = Date.parse(this.manifest.ephem.epoch_utc + 'Z')
   }
 
-  level(l: TileLevel) { return this.manifest.dem.tiles[l] }
+  level(l: TileLevel): LevelInfo { return this.manifest.dem.tiles[l]! }
+  hasLevel(l: TileLevel) { return !!this.manifest.dem.tiles[l] }
 
+  private missingSets = new Map<TileLevel, Set<string>>()
+  private missing(l: TileLevel): Set<string> {
+    let m = this.missingSets.get(l)
+    if (!m) { m = new Set(this.level(l).missing ?? []); this.missingSets.set(l, m) }
+    return m
+  }
   hasTile(l: TileLevel, r: number, c: number): boolean {
     const { n, res } = this.level(l)
     const nt = Math.ceil(n / TILE)
     if (r < 0 || c < 0 || r >= nt || c >= nt) return false
+    if (this.missing(l).has(`${r}_${c}`)) return false
     if (l !== 't20') return true
     const x0 = (c * TILE - n / 2) * res, x1 = ((c + 1) * TILE - n / 2) * res
     const y1 = (n / 2 - r * TILE) * res, y0 = (n / 2 - (r + 1) * TILE) * res
@@ -86,7 +116,7 @@ export class DataStore {
     const key = `${l}/${r}_${c}`
     let p = this.tiles.get(key)
     if (!p) {
-      p = this.hasTile(l, r, c) ? loadGrid(`${this.base}dem/${key}.bin.gz`, TILE).catch(() => null) : Promise.resolve(null)
+      p = this.hasTile(l, r, c) ? loadGrid(`${this.base}dem/${key}.bin.gz`, TILE, this.level(l)).catch(() => null) : Promise.resolve(null)
       this.tiles.set(key, p)
     }
     return p

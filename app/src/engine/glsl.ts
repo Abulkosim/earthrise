@@ -39,6 +39,10 @@ uniform sampler2D uMid;
 uniform sampler2D uFocus;
 uniform vec4 uFocusRect;   // left x, top y, size in metres, 1 when a focus grid is loaded
 uniform float uFocusRes;   // metres per texel of the focus grid
+uniform float uFocusT;     // how far a walk reads the focus grid, metres
+uniform sampler2D uRing;
+uniform vec4 uRingRect;    // the same for the ring grid: coarser tiles around a fine focus
+uniform float uRingRes;
 uniform float uGrowth;     // step growth per step, as a fraction of distance
 uniform float uDmax;       // how far the horizon walk goes, metres
 uniform float uFine;       // smallest step, as a fraction of the grid spacing
@@ -62,39 +66,43 @@ float tex1(sampler2D s, vec2 uv){
 float tex1(sampler2D s, vec2 uv){ return texture(s, uv).r; }
 #endif
 
-// Which grid to read at map point p, for a walk that has gone t metres.
-// 0 focus, 1 mid (80-90 S, 160 m), 2 far (60-90 S, 960 m), 3 nothing
-int levelAt(vec2 p, float t){
-  if (uFocusRect.w > 0.5 && t < 10000.0) {
-    vec2 f = vec2(p.x - uFocusRect.x, uFocusRect.y - p.y) / uFocusRect.z;
-    if (f.x > 0.002 && f.y > 0.002 && f.x < 0.998 && f.y < 0.998) return 0;
-  }
-  float m = max(abs(p.x), abs(p.y));
-  if (m < MID_HALF - 400.0 && t < 60000.0) return 1;
-  if (m < FAR_HALF - 2000.0) return 2;
-  return 3;
+// Grids, finest first: 0 focus (5 to 80 m tiles around the view), 1 ring (20 or 40 m tiles around
+// a 5 or 10 m focus), 2 mid (80-90 S, 160 m), 3 far (60-90 S, 960 m). 4 means no data.
+// This is the nesting of Barker et al. 2021: a fine map close by, coarser maps further out.
+bool inRect(vec2 p, vec4 r){
+  if (r.w < 0.5) return false;
+  vec2 f = vec2(p.x - r.x, r.y - p.y) / r.z;
+  return f.x > 0.002 && f.y > 0.002 && f.x < 0.998 && f.y < 0.998;
 }
-float heightL(vec2 p, int level){
-  if (level == 0) return tex1(uFocus, vec2(p.x - uFocusRect.x, uFocusRect.y - p.y) / uFocusRect.z);
-  if (level == 1) return tex1(uMid, vec2(p.x + MID_HALF, MID_HALF - p.y) / (2.0 * MID_HALF));
-  if (level == 2) return tex1(uFar, vec2(p.x + FAR_HALF, FAR_HALF - p.y) / (2.0 * FAR_HALF));
+bool covers(int l, vec2 p){
+  if (l == 0) return inRect(p, uFocusRect);
+  if (l == 1) return inRect(p, uRingRect);
+  float m = max(abs(p.x), abs(p.y));
+  return l == 2 ? m < MID_HALF - 400.0 : m < FAR_HALF - 2000.0;
+}
+// A walk that has gone t metres reads grid l only up to this distance: distant terrain needs no fine grid.
+float reach(int l){ return l == 0 ? uFocusT : (l == 1 ? 10000.0 : (l == 2 ? 60000.0 : 1e12)); }
+float heightL(vec2 p, int l){
+  if (l == 0) return tex1(uFocus, vec2(p.x - uFocusRect.x, uFocusRect.y - p.y) / uFocusRect.z);
+  if (l == 1) return tex1(uRing, vec2(p.x - uRingRect.x, uRingRect.y - p.y) / uRingRect.z);
+  if (l == 2) return tex1(uMid, vec2(p.x + MID_HALF, MID_HALF - p.y) / (2.0 * MID_HALF));
+  if (l == 3) return tex1(uFar, vec2(p.x + FAR_HALF, FAR_HALF - p.y) / (2.0 * FAR_HALF));
   return -20000.0;
 }
-float resL(int level){ return level == 0 ? uFocusRes : (level == 1 ? MID_RES : FAR_RES); }
-// The level to use when the focus grid has no data at p: the same choice levelAt makes without a focus.
-int coarseLevelAt(vec2 p, float t){
-  float m = max(abs(p.x), abs(p.y));
-  if (m < MID_HALF - 400.0 && t < 60000.0) return 1;
-  if (m < FAR_HALF - 2000.0) return 2;
-  return 3;
+float resL(int l){ return l == 0 ? uFocusRes : (l == 1 ? uRingRes : (l == 2 ? MID_RES : FAR_RES)); }
+// Height at p for a walk that has gone t metres: from the finest grid that applies and has data there.
+float heightAt(vec2 p, float t, out int lvl){
+  for (int l = 0; l < 4; l++) {
+    if (t >= reach(l) || !covers(l, p)) continue;
+    float h = heightL(p, l);
+    if (h > NODATA) { lvl = l; return h; }
+  }
+  lvl = 4;
+  return -20000.0;
 }
-float groundHeight(vec2 p){
-  int l = levelAt(p, 0.0);
-  float h = heightL(p, l);
-  if (h < NODATA && l == 0) { l = coarseLevelAt(p, 0.0); h = heightL(p, l); }
-  if (h < NODATA && l == 1) h = heightL(p, 2);
-  return h;
-}
+float groundHeight(vec2 p){ int l; return heightAt(p, 0.0, l); }
+// Grid spacing of the data under p: the unit for the first and smallest steps of a walk from there.
+float groundRes(vec2 p){ int l; heightAt(p, 0.0, l); return l < 4 ? resL(l) : FAR_RES; }
 
 // Local frame at a map point.
 void frame(vec2 p, out vec3 up, out vec3 east, out vec3 north){
@@ -119,11 +127,13 @@ float horizonTan(vec3 up, vec3 dir, float h0, float t0){
     float s = sin(th);
     vec3 q = up * cos(th) + dir * s;
     vec2 p = toMap(q);
-    int l = levelAt(p, t);
-    if (l == 3) break;
-    float ht = heightL(p, l);
-    if (ht < NODATA && l == 0) { l = coarseLevelAt(p, t); if (l == 3) break; ht = heightL(p, l); }
-    if (ht < NODATA && l == 1) { l = 2; ht = heightL(p, l); }
+    int l;
+    float ht = heightAt(p, t, l);
+    if (l == 4) {
+      if (!covers(3, p)) break;                 // beyond all data
+      t += max(FAR_RES * uFine, t * uGrowth);   // a hole in the data: step over it
+      continue;
+    }
     if (ht > NODATA) {
       float sh = sin(0.5 * th);
       float vert = (ht - h0) - (R + ht) * 2.0 * sh * sh;
@@ -153,7 +163,7 @@ void main(){
   vec3 up, east, north; frame(p, up, east, north);
   float hg = groundHeight(p);
   float h0 = hg + uMast;
-  float t0 = uFine * resL(levelAt(p, 0.0));
+  float t0 = uFine * groundRes(p);
   vec3 v;
   for (int k = 0; k < 3; k++) {
     float az = uAz0 + float(k) * uAzStep;
@@ -172,7 +182,7 @@ void main(){
   vec3 up, east, north; frame(pt.xy, up, east, north);
   float hg = groundHeight(pt.xy);
   float az = 2.0 * PI * floor(gl_FragCoord.y) / uNaz;
-  float tn = horizonTan(up, cos(az) * north + sin(az) * east, hg + pt.z, pt.w > 0.0 ? pt.w : uFine * resL(levelAt(pt.xy, 0.0)));
+  float tn = horizonTan(up, cos(az) * north + sin(az) * east, hg + pt.z, pt.w > 0.0 ? pt.w : uFine * groundRes(pt.xy));
   o = vec4(degrees(atan(tn)), hg, 0.0, 1.0);
 }`
 
@@ -189,7 +199,7 @@ void main(){
   vec3 up, east, north; frame(p, up, east, north);
   float hg = groundHeight(p);
   float h0 = hg + uMast;
-  float t0 = uFine * resL(levelAt(p, 0.0));
+  float t0 = uFine * groundRes(p);
   // Sun
   float sEl = asin(clamp(dot(uSun.xyz, up), -1.0, 1.0));
   vec3 sh = normalize(uSun.xyz - up * dot(uSun.xyz, up));
