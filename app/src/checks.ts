@@ -92,8 +92,15 @@ export async function horizonCheck(eng: Engine, onProgress?: Progress, o: Horizo
 export interface GoddardStats {
   n: number; bias: number; mae: number; rmse: number; corr: number; within5: number; meanOurs: number; meanTheirs: number
 }
+/** Permanent shadow: compared points that never see any part of the Sun, in their map (value 0) and in ours (lit-any count 0). */
+export interface PsrStats {
+  theirs: number; ours: number; both: number // point counts
+  oursOfTheirs: number // of their permanent shadow, the share that is permanent shadow in ours, 0..1 (NaN when they have none)
+  theirsOfOurs: number // of our permanent shadow, the share that is permanent shadow in theirs, 0..1 (NaN when we have none)
+}
 export interface GoddardResult {
   sun: GoddardStats; earth: GoddardStats
+  psr: PsrStats
   w: number; h: number             // field size in pixels
   ours: { sun: Float32Array; earth: Float32Array }   // 0..1, row 0 at the north (top) of the field
   theirs: { sun: Float32Array; earth: Float32Array } // NaN outside their map
@@ -114,6 +121,7 @@ const FULL_N = 5058, FULL_HALF = 2529, CROP_N = 1024
 /**
  * Our long-term average visibility against NASA Goddard's published maps (AVGVISIB_85S_060M_201608,
  * Mazarico et al. 2011 method). Observer on the surface; the Earth counts when any part of its disc shows.
+ * Also compares permanent shadow: the points that never see any part of the Sun in each map.
  */
 export async function goddardCheck(eng: Engine, onProgress?: Progress, o: GoddardOptions = {}): Promise<GoddardResult> {
   const cx = o.cx ?? 0, cy = o.cy ?? 0, fieldW = o.fieldW ?? 512, cell = o.cell ?? 80
@@ -143,13 +151,14 @@ export async function goddardCheck(eng: Engine, onProgress?: Progress, o: Goddar
   if (!ok) throw new Error('The long-term run was interrupted.')
   const [w, h] = eng.fieldPx, f = eng.field!
   const res = { ours: {} as GoddardResult['ours'], theirs: {} as GoddardResult['theirs'], stats: {} as Record<'sun' | 'earth', GoddardStats> }
+  let psrTheirs = 0, psrOurs = 0, psrBoth = 0
   for (const [body, ref] of [['sun', refSun], ['earth', refEarth]] as const) {
     const st = body === 'sun' ? eng.readState(2) : eng.readState(0) // litAny, comm counts in channel 3
     const n0 = ref.g.n, off = ref.g.offset ?? 0 // first row and column of the file within the full map
     const ours = new Float32Array(w * h), theirs = new Float32Array(w * h).fill(NaN)
     let n = 0, sd = 0, sad = 0, sq = 0, sa = 0, sb = 0, saa = 0, sbb = 0, sab = 0, within5 = 0
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
-      const a = st[(j * w + i) * 4 + 3] / steps
+      const count = st[(j * w + i) * 4 + 3], a = count / steps
       const top = (h - 1 - j) * w + i // readState rows start at the bottom of the field
       ours[top] = a
       const x = f.x + ((i + 0.5) / w) * f.w, y = f.y + ((j + 0.5) / h) * f.h
@@ -162,6 +171,13 @@ export async function goddardCheck(eng: Engine, onProgress?: Progress, o: Goddar
       const d = a - b
       n++; sd += d; sad += Math.abs(d); sq += d * d; sa += a; sb += b; saa += a * a; sbb += b * b; sab += a * b
       if (Math.abs(d) <= 0.05) within5++
+      if (body === 'sun') {
+        // never lit: a stored 0 in their map, no step with any part of the Sun in ours
+        const t = raw === 0, o = count === 0
+        if (t) psrTheirs++
+        if (o) psrOurs++
+        if (t && o) psrBoth++
+      }
     }
     const corr = (n * sab - sa * sb) / Math.sqrt((n * saa - sa * sa) * (n * sbb - sb * sb))
     res.stats[body] = { n, bias: sd / n, mae: sad / n, rmse: Math.sqrt(sq / n), corr, within5: within5 / n, meanOurs: sa / n, meanTheirs: sb / n }
@@ -169,7 +185,9 @@ export async function goddardCheck(eng: Engine, onProgress?: Progress, o: Goddar
   }
   onProgress?.(4, 4, '')
   return {
-    sun: res.stats.sun, earth: res.stats.earth, w, h, ours: res.ours, theirs: res.theirs,
+    sun: res.stats.sun, earth: res.stats.earth,
+    psr: { theirs: psrTheirs, ours: psrOurs, both: psrBoth, oursOfTheirs: psrBoth / psrTheirs, theirsOfOurs: psrBoth / psrOurs },
+    w, h, ours: res.ours, theirs: res.theirs,
     years, dt, steps, cell, bakeMs: eng.stats.bakeMs, evalMs: eng.stats.evalMs, source: useCrop ? 'crop' : 'full',
   }
 }

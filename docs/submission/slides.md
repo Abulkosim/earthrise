@@ -2,8 +2,8 @@
 
 Seven slides, the limit in the Project Submission Guide (title slide included).
 On-slide text is at most 30 words per slide, title included. Screenshots are
-taken from the live app at https://abulkosim.github.io/earthrise/ in the
-default view unless a slide says otherwise. Use the app's own dark background,
+taken from the app (live address: LIVE URL TO ADD; until it is up, a local
+run) in the default view unless a slide says otherwise. Use the app's own dark background,
 gold for the Sun and blue for the Earth; nothing else coloured.
 
 ---
@@ -47,8 +47,9 @@ shadowed ground around the marker shows. The marker's name label visible.
 **Speaker notes.** At the south pole the Sun skims the horizon and the Earth
 can drop behind the terrain, so a short move or a few days change everything.
 IM-2 Athena landed 250 metres from its target in March 2025 and its mission
-ended a day later; IM-1 and SLIM also lost power or contact to geometry. And
-when a launch slips, a planner has to find out again which sites still work.
+ended a day later; IM-1 and SLIM also lost power or contact to geometry. The
+app replays five real landings, this one included. And when a launch slips, a
+planner has to find out again which sites still work.
 
 ---
 
@@ -91,7 +92,9 @@ and the lines "It sets in ...". Bottom: the timeline with three rows,
 Shackleton connecting ridge, Malapert Massif and Mons Mouton Plateau.
 
 **Speaker notes.** The brief reads like a sentence: land on this date, stay
-this long, with this array, these loads and this battery. Click any point, or
+this long, with this array, these loads and this battery. One more sentence is
+the science team's: permanent shadow, where ice can last, within so many
+kilometres. Engineering and science read the same map. Click any point, or
 one of 42 known sites, and you see the Sun and Earth over its real horizon and
 how long until each sets. Up to six sites line up on one timeline of sunlight,
 Earth contact and battery.
@@ -104,23 +107,24 @@ Earth contact and battery.
 
 > When the date slips
 >
-> Land 3 Nov 2027: about 5% of the ground in view works. Two weeks later: none.
-> A month later: it works again.
+> Land 3 Nov 2027: about 12% of the ground in view works. Then the share
+> rises and falls with the landing date, month by month.
 
 **Visual.** Top: the landing calendar strip close up, "Ground in view that
 meets the brief, by landing date", with the 3 Nov 2027 bar highlighted. Below:
 three small captures of the map, layer "Where the mission works", for landing
-on 3 Nov 2027, two weeks later, and a month later, each with the map note "...
-of the ground in view meets the brief for a landing on ..." or "No ground in
-view meets the brief ...".
+on 3 Nov 2027 and on two later dates picked from the calendar, one high and one
+low, each with the map note "... of the ground in view meets the brief for a
+landing on ..." or "No ground in view meets the brief ...". "Show me a landing
+date that slips" in the top bar runs this as one animation.
 
 **Speaker notes.** This is the question the challenge asks: what happens when
 the schedule moves. The landing calendar runs the mission for every landing
 date and every point, 365 dates in a few seconds. In this view a landing on 3
-November 2027 works on about 5% of the ground, two weeks later nowhere, and a
-month later again.
+November 2027 works on about 12% of the ground. Move the date and the share
+rises and falls, month by month.
 
-[Team: check the three numbers on screen before capturing.]
+[Team: check the numbers on screen before capturing.]
 
 ---
 
@@ -152,16 +156,16 @@ and our own Python reference within 0.2 percentage points.
 
 > Try it
 >
-> abulkosim.github.io/earthrise
+> LIVE URL TO ADD
 >
 > Runs in a browser, no install, no login. Open source. For mission planners,
 > teachers and anyone curious.
 
-**Visual.** A QR code for https://abulkosim.github.io/earthrise/ beside a
+**Visual.** A QR code for the live address (LIVE URL TO ADD) beside a
 close crop of the panorama from slide 4: the terrain horizon with the gold Sun
 and the blue Earth above it.
 
 **Speaker notes.** Earthrise runs in a browser, and the code and every check
-are public under Apache 2.0. Its limits are written in the app: 20 m terrain
+are open source under Apache 2.0. Its limits are written in the app: 20 m terrain
 cannot see boulders, there is no thermal model, and the lander is assumed
 upright. We want to put it in front of mission planners and teachers next.
