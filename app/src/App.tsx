@@ -359,7 +359,7 @@ function Main({ data }: { data: DataStore }) {
           </Header>
 
           <LeftPanel
-            tab={leftTab} onTab={setLeftTab}
+            tab={leftTab} onTab={setLeftTab} crowded={!!selected}
             mission={<BriefPanel brief={brief} epochMs={data.epochMs} onChange={setBrief} />}
             landings={
               <RealLandings replays={REPLAYS} activeId={replay?.id} onReplay={act.onReplay} />
