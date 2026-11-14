@@ -11,7 +11,37 @@ at 40 m, 97 MB at 80 m. The app loads only the tiles around the view, so a
 visitor downloads a small part of it. Copy all of `app/public/data` to the
 server; the first upload takes a while.
 
-## On your own server
+## On GitHub Pages (how the team hosts it)
+
+The app is at https://abulkosim.github.io/earthrise/. GitHub Pages is free for public repositories and
+holds 1 GB a site, and the data is 2.4 GB, so the data lives in four
+repositories, each with its own Pages site:
+
+| Repository | Holds | Size |
+|---|---|---|
+| `earthrise-data` | manifest, ephemeris, validation files, terrain at 960, 160, 80 and 40 m | 0.5 GB |
+| `earthrise-data-20m` | terrain tiles at 20 m and 10 m | 0.8 GB |
+| `earthrise-data-5m-a` | the first half of the 5 m tiles (tile rows 0 to 38) | 0.6 GB |
+| `earthrise-data-5m-b` | the second half | 0.6 GB |
+
+The manifest in `earthrise-data` says where each level lives; the app reads
+that (`base` and `bases` in `app/src/engine/data.ts`), so nothing about the
+hosting is built into the app.
+
+1. Build the data (see "Run it yourself" in the [README](../README.md)).
+2. Lay it out: `python deploy/pages_data.py app/public/data ../earthrise-pages-data`.
+3. Commit each of the four folders to its repository (a branch, then a pull
+   request, as for code).
+4. Make the five repositories public. Pages on a private repository needs a
+   paid GitHub plan.
+5. Run `deploy/go-live.sh`. It turns Pages on for the four data repositories,
+   enables and runs `.github/workflows/pages.yml` (which builds the app with
+   `VITE_DATA_BASE` set to the `earthrise-data` site), and waits until the app
+   and one file from every data site answer.
+
+After that the workflow publishes the app on every push to `main`.
+
+## On your own server (the other way)
 
 1. Point a domain at the server (an A record).
 2. Install [Caddy](https://caddyserver.com/docs/install) on the server. It gets
@@ -27,15 +57,6 @@ server; the first upload takes a while.
 
 The site needs HTTPS only for the "Copy a link" button (browsers restrict the
 clipboard to secure pages). Everything else works over plain HTTP too.
-
-## On GitHub Pages
-
-`.github/workflows/pages.yml` builds and publishes the app on every push to
-`main`, reading the data from the `earthrise-data` repository's own Pages site.
-Pages on a private repository needs a paid GitHub plan; the workflow is
-disabled while the repositories are private. With the adjusted terrain the data is 2.4 GB, over
-GitHub Pages' size limit for a site, so the team's own server is the way to
-host it.
 
 ## What the server must not do
 
