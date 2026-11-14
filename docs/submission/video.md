@@ -37,7 +37,7 @@ own; the picture carries it.
 - Speak the names in full on screen but short in the voice; the guide asks for
   names at 0:00, and the on-screen text carries the full names.
 - Before recording 0:20 to 0:25, check on screen that the default view gives
-  about 12% for 3 Nov 2027, and that the share rises and falls as the date
+  about 15% for 3 Nov 2027, and that the share rises and falls as the date
   slips.
 - Export at 1920 by 1080 and upload to YouTube as public or unlisted; test the
   link in a private window.

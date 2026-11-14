@@ -6,7 +6,16 @@ This project is not endorsed by NASA or by any of the organisations below. It us
 
 ## NASA data
 
-**LOLA gridded polar elevation maps** (Lunar Reconnaissance Orbiter, Lunar Orbiter Laser Altimeter; PDS data set LRO-L-LOLA-4-GDR-V1.0). The terrain for every horizon. We use LDEM_80S_20M, LDEM_80S_40M and LDEM_80S_80M (80 to 90° S at 20, 40 and 80 m) and LDEM_60S_240M (60 to 90° S at 240 m).
+**NASA Goddard track-adjusted LOLA elevation maps** (Lunar Reconnaissance Orbiter, Lunar Orbiter Laser Altimeter; Planetary Geodesy Data Archive, NASA GSFC). The terrain for every horizon, in the app and in the reference model.
+- LDEM_87S_5MPP, 87 to 90° S at 5 m (PGDA product 81). Fetched from the USGS Astrogeology copy: https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Lunar_safed/LMAP/SouthPolar/ldem_87s_5mpp_cog.tif. Paper: Barker, M. K., Mazarico, E., Neumann, G. A., Smith, D. E., Zuber, M. T., Head, J. W. (2021), Improved LOLA elevation maps for south pole landing sites: error estimates and their impact on illumination conditions, Planetary and Space Science 203, 105119, https://doi.org/10.1016/j.pss.2020.105119.
+- LDEM_80S_20MPP_ADJ, 80 to 90° S at 20 m, and LDEM_60S_240MPP_ADJ, 60 to 90° S at 240 m (PGDA product 90), from https://pgda.gsfc.nasa.gov/data/LOLA_20mpp/. Paper: Barker, M. K. et al. (2023), Planetary Science Journal 4, 183.
+
+Terms: NASA GSFC public data; the product pages ask users to cite the papers above.
+
+**Region outlines for Site01** (the Shackleton to de Gerlache connecting ridge), NASA Goddard, Site01_ROIs.tgz from https://pgda.gsfc.nasa.gov/data/LOLA_5mpp/Site01/. Used for the check against Barker et al. 2021, Table 2. The centres of three catalogue sites (regions 1, 4 and 6) come from that table.
+Terms: NASA GSFC public data.
+
+**LOLA gridded polar elevation maps, PDS mosaics** (PDS data set LRO-L-LOLA-4-GDR-V1.0): LDEM_80S_20M, LDEM_80S_40M, LDEM_80S_80M and LDEM_60S_240M. Used only for comparison: they carry errors along the laser tracks that the adjusted maps remove.
 From PDS Geosciences Node: https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/polar/img/
 Terms: NASA Planetary Data System data, free to use. Instrument paper: Smith, D. E. et al. (2010), The Lunar Orbiter Laser Altimeter investigation on the Lunar Reconnaissance Orbiter mission, Space Science Reviews 150, 209-241, https://doi.org/10.1007/s11214-009-9512-y.
 
@@ -47,7 +56,8 @@ Terms: see source.
 ## Method papers
 
 - Mazarico, E., Neumann, G. A., Smith, D. E., Zuber, M. T., Torrence, M. H. (2011), Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211, 1066-1081, https://doi.org/10.1016/j.icarus.2010.10.030. The horizon method and the average visibility maps we check against.
-- Barker, M. K., Mazarico, E., Neumann, G. A., Smith, D. E., Zuber, M. T., Head, J. W. (2021), Improved LOLA elevation maps for south pole landing sites: error estimates and their impact on illumination conditions, Planetary and Space Science 203, 105119, https://doi.org/10.1016/j.pss.2020.105119. Horizon practice and the cut of the Sun's disk by a level horizon.
+- Barker, M. K., Mazarico, E., Neumann, G. A., Smith, D. E., Zuber, M. T., Head, J. W. (2021), Improved LOLA elevation maps for south pole landing sites: error estimates and their impact on illumination conditions, Planetary and Space Science 203, 105119, https://doi.org/10.1016/j.pss.2020.105119. The 5 m adjusted map, the nesting of grids, the cut of the Sun's disk by a level horizon, and Table 2, which we reproduce on the validation page.
+- Barker, M. K. et al. (2023), Planetary Science Journal 4, 183. The 20 m and 240 m adjusted maps.
 - Gläser, P., Scholten, F., De Rosa, D., Marco Figuera, R., Oberst, J., Mazarico, E., Neumann, G. A., Robinson, M. S. (2014), Illumination conditions at the lunar south pole using high resolution Digital Terrain Models from LOLA, Icarus 243, 78-90, https://doi.org/10.1016/j.icarus.2014.08.013. Illumination figures for the Shackleton connecting ridge, used as a sanity check.
 - Bussey, D. B. J. et al. (2010), Illumination conditions of the south pole of the Moon derived using Kaguya topography, Icarus 208, 558-564, https://doi.org/10.1016/j.icarus.2010.03.028. Source of one candidate point in the site list.
 
@@ -59,6 +69,19 @@ Terms: see source.
 | Vite 8.3.8 | Dev server and build | https://vite.dev | MIT |
 | @vitejs/plugin-react 6.3.0 | React support in Vite | https://github.com/vitejs/vite-plugin-react | MIT |
 | TypeScript 7.0.2 | Language and type checks | https://www.typescriptlang.org | Apache-2.0 |
+| Tailwind CSS 4.3.5, @tailwindcss/vite 4.3.5 | Styling | https://tailwindcss.com | MIT |
+| tw-animate-css 1.4.0 | Animation utilities for Tailwind | https://github.com/Wombosvideo/tw-animate-css | MIT |
+| shadcn/ui components | Buttons, dialogs, menus, tabs and other controls, copied into `app/src/components/ui` | https://ui.shadcn.com | MIT |
+| radix-ui 1.8.1 (Radix Primitives) | Accessible behaviour under the shadcn/ui components | https://www.radix-ui.com | MIT |
+| Motion 14.13.0 | Interface animation | https://motion.dev | MIT |
+| lucide-react 1.72.0 | Icons | https://lucide.dev | ISC |
+| sonner 2.0.8 | Notifications | https://sonner.emilkowal.ski | MIT |
+| cmdk 1.1.1 | "Find a site" command palette | https://cmdk.paco.me | MIT |
+| react-day-picker 10.0.2, date-fns 4.4.0 | Landing date calendar | https://daypicker.dev, https://date-fns.org | MIT |
+| class-variance-authority 0.7.1 | Component style variants | https://cva.style | Apache-2.0 |
+| clsx 2.1.1, tailwind-merge 3.7.0 | Class name joining | https://github.com/lukeed/clsx, https://github.com/dcastil/tailwind-merge | MIT |
+| Vitest 5.1.0 | App unit tests | https://vitest.dev | MIT |
+| puppeteer-core 25.17.0 | End-to-end check, screenshots and deck in headless Chrome | https://pptr.dev | Apache-2.0 |
 | oxlint 1.93.0 | Lint | https://oxc.rs | MIT |
 | @types/react, @types/react-dom, @types/node | Type definitions | https://github.com/DefinitelyTyped/DefinitelyTyped | MIT |
 | NumPy 2.5.4 | Reference model and data build | https://numpy.org | BSD-3-Clause (with bundled MIT, 0BSD, Zlib and CC0 parts) |
@@ -76,7 +99,7 @@ Versions are the ones installed when this file was written; `app/package.json` a
 | Font | Used for | Where | Licence |
 |---|---|---|---|
 | Archivo (variable, by Omnibus-Type), through Fontsource `@fontsource-variable/archivo` 5.3.0 | Interface text | https://fontsource.org/fonts/archivo | SIL Open Font License 1.1 |
-| Source Serif 4 (variable italic, by Adobe), through Fontsource `@fontsource-variable/source-serif-4` 5.3.1 | Place names on the map | https://fontsource.org/fonts/source-serif-4 | SIL Open Font License 1.1 |
+| Source Serif 4 (variable italic, by Adobe), through Fontsource `@fontsource-variable/source-serif-4` 5.3.1 | Wordmark and place names | https://fontsource.org/fonts/source-serif-4 | SIL Open Font License 1.1 |
 
 ## Design guidance
 
