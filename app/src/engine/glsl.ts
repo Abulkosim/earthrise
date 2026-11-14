@@ -302,7 +302,8 @@ void main(){
       col = mix(vec3(0.012), uHue * uHue, pow(t, 1.3)) * shade + vec3(0.006) * relief;
       if (!ok) col = mix(col, vec3(dot(col, vec3(0.33))), 0.35) * 0.55;
     } else {
-      col = ok ? uHue * uHue * (0.25 + 0.75 * t) * shade : vec3(0.02) * shade;
+      // ground that meets the brief keeps its relief; the rest stays readable as terrain, but dark
+      col = ok ? uHue * uHue * (0.16 + 0.66 * relief * relief) : vec3(0.034) * shade;
     }
     if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0 || uMRect.z <= 0.0) col = vec3(0.012) * relief;
   }

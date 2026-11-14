@@ -334,7 +334,7 @@ export function MapView(p: Props) {
                 <g key={s.id} className={`site${sel ? ' sel' : ''}${cmp ? ' cmp' : ''}`} transform={`translate(${px} ${py})`}
                   onPointerDown={(ev) => ev.stopPropagation()} onClick={() => p.onPick(s.lat, s.lon, s)}>
                   <circle r={sel ? 7 : 4.5} />
-                  {(sel || cmp || mpp < 260) && <text x={10} y={4} className="place">{s.name}</text>}
+                  {(sel || cmp || mpp < 22) && <text x={10} y={4} className="place">{s.name}</text>}
                 </g>
               )
             })}
