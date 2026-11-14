@@ -16,6 +16,10 @@ export interface Brief {
   needs: Needs
 }
 
+/** Landing dates the ephemeris table can serve, with room for the timeline on both sides. */
+export const LANDING_MIN_MS = Date.UTC(2023, 1, 1)
+export const LANDING_MAX_MS = Date.UTC(2044, 8, 1)
+
 export const DEFAULT_NEEDS: Needs = { minLit: 0.5, maxDarkH: 72, minComm: 0.3, powerLasts: true }
 
 export function defaultBrief(epochMs: number): Brief {
@@ -70,7 +74,7 @@ export const HUES: Record<Layer['hue'], [number, number, number]> = {
 }
 
 export function needsVector(b: Brief): [number, number, number, number] {
-  return [b.needs.minLit, b.needs.maxDarkH, b.needs.minComm, b.needs.powerLasts ? b.stayDays * 24 - 1.5 : 0]
+  return [b.needs.minLit, b.needs.maxDarkH, b.needs.minComm, b.needs.powerLasts ? b.stayDays * 24 - 0.5 : 0]
 }
 
 // ---- formatting --------------------------------------------------------
@@ -96,5 +100,5 @@ export function fmtLon(lon: number, digits = 2) { return `${(((lon % 360) + 360)
 export function fmtPct(f: number) { return `${Math.round(f * 100)}%` }
 export function toInputDate(ms: number) {
   const d = new Date(ms)
-  return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`
+  return `${String(d.getUTCFullYear()).padStart(4, '0')}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`
 }
