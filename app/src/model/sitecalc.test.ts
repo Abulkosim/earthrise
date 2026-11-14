@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import { DataStore, R_MOON, type Manifest } from '../engine/data'
 import { DEFAULT_MISSION, type Mission } from '../engine/engine'
-import { computeSeries, diskFraction, horizonAt, landingWindows, ll2xy, sphereHorizon, summarize, xy2ll } from './sitecalc'
+import { computeSeries, diskFraction, horizonAt, landingWindows, panelGain, ll2xy, sphereHorizon, summarize, xy2ll } from './sitecalc'
 import type { Horizon, SiteSeries } from './types'
 import raw from './__fixtures__/reference.json?raw'
 
@@ -128,10 +128,11 @@ describe('landingWindows', () => {
     const n = 24
     const f = () => new Float32Array(n)
     const s: SiteSeries = {
-      t0: 0, dt: 1, n, sunAz: f(), sunEl: f(), sunRadius: f(), sunFrac: f(), earthAz: f(), earthEl: f(), earthClear: f(),
+      t0: 0, dt: 1, n, sunAz: f(), sunEl: f(), sunRadius: f(), sunFrac: f(), power: f(), earthAz: f(), earthEl: f(), earthClear: f(),
       dsn: new Uint8Array(n).fill(1), comm: new Uint8Array(n).fill(1), battery: f(),
     }
     s.sunFrac.fill(1, 0, 12)
+    s.power.fill(1, 0, 12)
     return s
   }
   const needs = { minLit: 0.75, maxDarkH: 1, minComm: 0.5, powerLasts: false }
@@ -148,5 +149,22 @@ describe('landingWindows', () => {
     const tiny: Mission = { ...DEFAULT_MISSION, arrayW: 0, batteryWh: 100, startWh: 100 }
     const out = landingWindows(series(), tiny, 4, { ...needs, powerLasts: true }, 1)
     expect(out.every((v) => v === 0)).toBe(true)
+  })
+})
+
+describe('panelGain', () => {
+  const fixed = (az: number, tilt: number) => ({ ...DEFAULT_MISSION, panelFixed: true, panelAz: az, panelTilt: tilt })
+  it('is 1 for an array that tracks the Sun', () => {
+    expect(panelGain(DEFAULT_MISSION, 123, 4)).toBe(1)
+  })
+  it('is 1 for an upright array facing a Sun on the horizon, 0 for one facing away', () => {
+    expect(panelGain(fixed(270, 90), 270, 0)).toBeCloseTo(1, 12)
+    expect(panelGain(fixed(270, 90), 90, 0)).toBe(0)
+  })
+  it('is the sine of the elevation for a flat array', () => {
+    expect(panelGain(fixed(0, 0), 200, 30)).toBeCloseTo(0.5, 12)
+  })
+  it('is the cosine of the azimuth offset for an upright array and a low Sun', () => {
+    expect(panelGain(fixed(180, 90), 240, 0)).toBeCloseTo(0.5, 12)
   })
 })

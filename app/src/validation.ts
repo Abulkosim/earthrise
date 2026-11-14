@@ -246,7 +246,7 @@ function limitsSection() {
   const items = [
     'The 20 m terrain cannot see boulders or craters smaller than a few tens of metres. A boulder next to the lander can still shade it.',
     'There is no thermal model. The battery model is a simple energy balance: array output in, loads out.',
-    'The lander stands upright and its solar array tracks the Sun. Light reflected from the terrain is ignored.',
+    'The solar array either tracks the Sun or is fixed at an azimuth and tilt you give. The antenna has no pointing limits. Light reflected from the terrain is ignored.',
     'DSN visibility uses the IAU model of the Earth\'s rotation and a 10 degree elevation mask at the three complexes.',
     'The map\'s horizon cache stores each angle in 10 bits: steps of 0.02 degrees near the pole, coarser where the Sun and Earth can stand higher. The site panel uses full precision.',
     'Sites north of 60° S have no terrain in the app and use a smooth-sphere horizon. The app says so.',

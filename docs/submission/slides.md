@@ -167,5 +167,4 @@ and the blue Earth above it.
 
 **Speaker notes.** Earthrise runs in a browser, and the code and every check
 are open source under Apache 2.0. Its limits are written in the app: 20 m terrain
-cannot see boulders, there is no thermal model, and the lander is assumed
-upright. We want to put it in front of mission planners and teachers next.
+cannot see boulders and there is no thermal model. We want to put it in front of mission planners and teachers next.

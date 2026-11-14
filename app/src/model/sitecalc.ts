@@ -42,6 +42,17 @@ export function diskFraction(elCentre: number, elHorizon: number, radius: number
   return (Math.acos(z) - z * Math.sqrt(1 - z * z)) / Math.PI
 }
 
+/**
+ * Share of full output a solar array gives for a Sun at (az, el) degrees: 1 when it tracks the Sun,
+ * the cosine of the angle between its normal and the Sun when it is fixed (never below 0).
+ * Same formula as uPanel in engine/glsl.ts.
+ */
+export function panelGain(m: Mission, sunAz: number, sunEl: number): number {
+  if (!m.panelFixed) return 1
+  const el = sunEl * D2R, t = m.panelTilt * D2R
+  return Math.max(0, Math.cos(el) * Math.sin(t) * Math.cos((sunAz - m.panelAz) * D2R) + Math.sin(el) * Math.cos(t))
+}
+
 export function computeSeries(
   data: DataStore, lat: number, lon: number, hz: Horizon, m: Mission, t0: number, n: number, dt: number, kStart = 0,
 ): SiteSeries {
@@ -49,7 +60,7 @@ export function computeSeries(
   const rs = (R_MOON + hz.ground + m.mast) / 1000
   const s: SiteSeries = {
     t0, dt, n,
-    sunAz: new Float32Array(n), sunEl: new Float32Array(n), sunRadius: new Float32Array(n), sunFrac: new Float32Array(n),
+    sunAz: new Float32Array(n), sunEl: new Float32Array(n), sunRadius: new Float32Array(n), sunFrac: new Float32Array(n), power: new Float32Array(n),
     earthAz: new Float32Array(n), earthEl: new Float32Array(n), earthClear: new Float32Array(n),
     dsn: new Uint8Array(n), comm: new Uint8Array(n), battery: new Float32Array(n),
   }
@@ -73,13 +84,14 @@ export function computeSeries(
     const eAz = (Math.atan2(vx * east[0] + vy * east[1] + vz * east[2], vx * north[0] + vy * north[1] + vz * north[2]) * R2D + 360) % 360
     const clear = eEl - horizonAt(hz, eAz)
     const comm = clear >= m.earthMargin && (e[7] > 0.5 || !m.needDsn)
-    s.sunAz[k] = sAz; s.sunEl[k] = sEl; s.sunRadius[k] = sRad; s.sunFrac[k] = fs
+    const pw = fs * panelGain(m, sAz, sEl)
+    s.sunAz[k] = sAz; s.sunEl[k] = sEl; s.sunRadius[k] = sRad; s.sunFrac[k] = fs; s.power[k] = pw
     s.earthAz[k] = eAz; s.earthEl[k] = eEl; s.earthClear[k] = clear
     s.dsn[k] = e[7]; s.comm[k] = comm ? 1 : 0
     // the battery run starts at landing (step kStart); before that there is no lander
     if (k >= kStart && !dead) {
       const load = fs >= m.litMin ? m.loadLitW : m.loadDarkW
-      wh = Math.min(m.batteryWh, wh + (m.arrayW * fs - load) * dt)
+      wh = Math.min(m.batteryWh, wh + (m.arrayW * pw - load) * dt)
       if (wh <= 0) { wh = 0; dead = true }
     }
     s.battery[k] = k >= kStart ? wh : NaN
@@ -100,7 +112,7 @@ export function summarize(s: SiteSeries, m: Mission, k0 = 0, k1 = s.n): SiteSumm
     gap = s.comm[k] ? 0 : gap + s.dt
     longestGap = Math.max(longestGap, gap)
     if (!dead) {
-      wh = Math.min(m.batteryWh, wh + (m.arrayW * fs - (isLit ? m.loadLitW : m.loadDarkW)) * s.dt)
+      wh = Math.min(m.batteryWh, wh + (m.arrayW * s.power[k] - (isLit ? m.loadLitW : m.loadDarkW)) * s.dt)
       minWh = Math.min(minWh, wh)
       if (wh <= 0) dead = true
       else alive += s.dt
