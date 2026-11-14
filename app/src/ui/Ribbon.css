@@ -1,0 +1,262 @@
+/* Written with AI assistance (Claude); see the README. */
+
+.ribbon {
+  --ribbon-name-w: 200px;
+  --axis-h: 66px;
+  --row-bg: var(--ground-1);
+  background: var(--ground-1);
+  color: var(--dust-1);
+  font-family: var(--font-ui);
+  font-size: var(--t-sm);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ribbon-chart {
+  position: relative;
+  overscroll-behavior-x: contain;
+}
+
+.ribbon-head,
+.ribbon-row {
+  display: grid;
+  grid-template-columns: var(--ribbon-name-w) minmax(0, 1fr);
+}
+
+.ribbon-head { border-bottom: var(--rule); }
+
+.ribbon-utc {
+  padding: 20px var(--gap-3) 0 0;
+  text-align: right;
+  font-size: var(--t-xs);
+  line-height: 14px;
+  color: var(--dust-3);
+}
+
+/* ---------- axis ---------- */
+
+.ribbon-axis {
+  position: relative;
+  height: var(--axis-h);
+  overflow: hidden;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.ribbon-ticks { position: absolute; top: 0; left: 0; display: block; }
+.ribbon-ticks path { fill: none; stroke-width: 1; shape-rendering: crispEdges; }
+.ribbon-tick-day { stroke: var(--ground-3); }
+.ribbon-tick-week { stroke: var(--dust-3); }
+.ribbon-tick-month { stroke: var(--dust-2); }
+
+.ribbon-label {
+  position: absolute;
+  top: 20px;
+  font-size: var(--t-xs);
+  line-height: 14px;
+  color: var(--dust-3);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.ribbon-label.is-month { color: var(--dust-2); }
+
+/* playhead handle and its time */
+.ribbon-handle {
+  position: absolute;
+  top: 0;
+  width: 15px;
+  height: 14px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.ribbon-handle::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 7px;
+  height: 11px;
+  background: var(--dust-1);
+  border-radius: 1px;
+}
+.ribbon-handle.is-off::before { background: var(--dust-3); }
+
+.ribbon-now {
+  position: absolute;
+  top: 0;
+  font-size: var(--t-xs);
+  line-height: 14px;
+  color: var(--dust-1);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* the stay bracket */
+.ribbon-stay {
+  position: absolute;
+  top: 44px;
+  height: 20px;
+  cursor: grab;
+  touch-action: none;
+}
+.ribbon-stay:active { cursor: grabbing; }
+.ribbon-stay::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 9px;
+  height: 1px;
+  background: var(--dust-2);
+}
+
+.ribbon-stay-cap {
+  position: absolute;
+  top: 4px;
+  width: 1px;
+  height: 11px;
+  background: var(--dust-2);
+}
+.ribbon-stay-cap.is-start { left: 0; }
+.ribbon-stay-cap.is-end { right: 0; }
+
+.ribbon-stay-label {
+  position: absolute;
+  top: 0;
+  padding: 0 var(--gap-1);
+  font-size: var(--t-xs);
+  line-height: 20px;
+  color: var(--dust-2);
+  white-space: nowrap;
+  background: var(--ground-1);
+}
+.ribbon-stay-label.is-start.is-outside { right: 100%; margin-right: 2px; }
+.ribbon-stay-label.is-start.is-inside { left: 3px; }
+.ribbon-stay-label.is-end.is-outside { left: 100%; margin-left: 2px; }
+.ribbon-stay-label.is-end.is-inside { right: 3px; }
+.ribbon-stay-date { color: var(--dust-1); }
+
+/* ---------- rows ---------- */
+
+.ribbon-row {
+  background: var(--row-bg);
+  border-bottom: var(--rule);
+}
+.ribbon-row.is-selected { --row-bg: var(--ground-2); }
+
+.ribbon-name {
+  min-width: 0;
+  padding: var(--gap-2) var(--gap-3) var(--gap-2) var(--gap-4);
+}
+
+.ribbon-name-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-2);
+  min-width: 0;
+}
+
+.ribbon-site {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dust-1);
+  font-size: var(--t-md);
+  line-height: 1.3;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+button.ribbon-site { cursor: pointer; }
+
+.ribbon-remove {
+  flex: none;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dust-3);
+  font-size: var(--t-xs);
+  cursor: pointer;
+  opacity: 0;
+}
+.ribbon-row:hover .ribbon-remove,
+.ribbon-row:focus-within .ribbon-remove { opacity: 1; }
+.ribbon-remove:hover { color: var(--dust-1); }
+
+.ribbon-summary {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--gap-3);
+  font-size: var(--t-xs);
+  line-height: 1.35;
+  color: var(--dust-2);
+}
+.ribbon-dies { color: var(--dust-1); }
+
+.ribbon-lanes {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: var(--gap-2) 0;
+}
+.ribbon-lanes-inner { position: relative; flex: 1; min-width: 0; }
+.ribbon-canvas { display: block; }
+
+.ribbon-legend {
+  position: absolute;
+  left: 0;
+  padding: 0 var(--gap-1) 0 2px;
+  font-size: var(--t-xs);
+  color: var(--dust-3);
+  background: var(--row-bg);
+  pointer-events: none;
+}
+
+.ribbon-empty {
+  margin: 0;
+  padding: var(--gap-4) 0;
+  color: var(--dust-2);
+}
+
+/* ---------- stay band and playhead through the rows ---------- */
+
+.ribbon-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--ribbon-name-w);
+  right: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ribbon-band {
+  position: absolute;
+  top: calc(var(--axis-h) + 1px);
+  bottom: 0;
+  background: var(--dust-1);
+  opacity: 0.04;
+}
+
+.ribbon-playline {
+  position: absolute;
+  top: 12px;
+  bottom: 0;
+  width: 1px;
+  background: var(--dust-1);
+}
+
+/* ---------- hover readout ---------- */
+
+.ribbon-readout {
+  min-height: calc(var(--t-xs) * 1.45 + var(--gap-2) * 2);
+  padding: var(--gap-2) var(--gap-4);
+  font-size: var(--t-xs);
+  line-height: 1.45;
+  color: var(--dust-2);
+}
+.ribbon-readout .place { color: var(--dust-1); }
