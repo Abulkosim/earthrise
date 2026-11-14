@@ -140,6 +140,11 @@ function Clause(p: { checked: boolean; onChange(v: boolean): void; tone?: Tone; 
   )
 }
 
+/** Keeps a control and the punctuation after it on one line: a full stop alone at the start of a line reads as a mistake. */
+function Tie({ children }: { children: React.ReactNode }) {
+  return <span className="whitespace-nowrap">{children}</span>
+}
+
 function Section(p: { icon: LucideIcon; label: string; tone?: Tone; children: React.ReactNode }) {
   const Icon = p.icon
   return (
@@ -163,12 +168,12 @@ export const BriefPanel = memo(function BriefPanel(p: { brief: BriefT; epochMs: 
       <Section icon={CalendarDays} label="Stay">
         Land on{' '}
         <DateChip ms={p.epochMs + b.landing * 3600e3} onChange={(ms) => p.onChange({ ...b, landing: (ms - p.epochMs) / 3600e3 })} />{' '}
-        and work for <NumChip label="Length of stay in days" value={b.stayDays} min={1} max={60} unit="days" presets={[7, 14, 28]} onChange={(v) => p.onChange({ ...b, stayDays: Math.round(v) })} />.
+        and work <Tie>for <NumChip label="Length of stay in days" value={b.stayDays} min={1} max={60} unit="days" presets={[7, 14, 28]} onChange={(v) => p.onChange({ ...b, stayDays: Math.round(v) })} />.</Tie>
       </Section>
 
       <Section icon={Zap} label="Power" tone="sun">
         The solar array{' '}
-        <Select value={m.panelFixed ? 'fixed' : 'track'} onValueChange={(v) => setM('panelFixed', v === 'fixed')}>
+        <Tie><Select value={m.panelFixed ? 'fixed' : 'track'} onValueChange={(v) => setM('panelFixed', v === 'fixed')}>
           <SelectTrigger aria-label="How the solar array is mounted" className={cn(chipVariants(), 'inline-flex w-auto gap-1.5 py-0 data-[size=default]:h-[25px] [&>svg:last-child]:size-3.5')}>
             <span className="dot dot-sun" aria-hidden="true" />
             <SelectValue />
@@ -177,9 +182,9 @@ export const BriefPanel = memo(function BriefPanel(p: { brief: BriefT; epochMs: 
             <SelectItem value="track">turns to follow the Sun</SelectItem>
             <SelectItem value="fixed">is fixed to the lander</SelectItem>
           </SelectContent>
-        </Select>
-        {m.panelFixed && (<>, facing <NumChip appear tone="sun" label="Azimuth the array faces, degrees from north" value={m.panelAz} min={0} max={359} step={5} unit="°" presets={[0, 90, 180, 270]} onChange={(v) => setM('panelAz', v)} /> from north
-          and tilted <NumChip appear tone="sun" label="Tilt of the array from flat, degrees" value={m.panelTilt} min={0} max={180} step={5} unit="°" presets={[0, 45, 90]} onChange={(v) => setM('panelTilt', v)} /> from flat</>)}. It
+        </Select>{m.panelFixed ? ',' : '.'}</Tie>
+        {m.panelFixed && (<> facing <NumChip appear tone="sun" label="Azimuth the array faces, degrees from north" value={m.panelAz} min={0} max={359} step={5} unit="°" presets={[0, 90, 180, 270]} onChange={(v) => setM('panelAz', v)} /> from north
+          and tilted <NumChip appear tone="sun" label="Tilt of the array from flat, degrees" value={m.panelTilt} min={0} max={180} step={5} unit="°" presets={[0, 45, 90]} onChange={(v) => setM('panelTilt', v)} /> from flat.</>)} It
         gives <NumChip tone="sun" label="Array power in full Sun, watts" value={m.arrayW} min={0} max={20000} sliderMax={2000} step={10} unit="W" presets={[200, 450, 1000]} onChange={(v) => setM('arrayW', v)} /> in
         full Sun and stands <NumChip label="Height of array and antenna above ground, metres" value={m.mast} min={0} max={30} step={0.5} unit="m" presets={[2, 5, 10]} onChange={(v) => setM('mast', v)} /> above
         the ground. The lander draws <NumChip tone="sun" label="Load while lit, watts" value={m.loadLitW} min={0} max={20000} sliderMax={1000} step={10} unit="W" onChange={(v) => setM('loadLitW', v)} /> when
@@ -196,7 +201,7 @@ export const BriefPanel = memo(function BriefPanel(p: { brief: BriefT; epochMs: 
 
       <Section icon={ListChecks} label="Needs">
         It needs sunlight at least <NumChip tone="sun" label="Minimum share of sunlight, percent" value={Math.round(n.minLit * 100)} min={0} max={100} step={5} unit="%" presets={[25, 50, 75]} onChange={(v) => setN('minLit', v / 100)} /> of
-        the time, no dark stretch longer than <NumChip tone="sun" label="Longest allowed dark stretch, hours" value={n.maxDarkH} min={0} max={1500} sliderMax={360} step={6} unit="h" presets={[24, 72, 168]} onChange={(v) => setN('maxDarkH', v)} />,
+        the time, no dark stretch longer <Tie>than <NumChip tone="sun" label="Longest allowed dark stretch, hours" value={n.maxDarkH} min={0} max={1500} sliderMax={360} step={6} unit="h" presets={[24, 72, 168]} onChange={(v) => setN('maxDarkH', v)} />,</Tie>{' '}
         contact at least <NumChip tone="earth" label="Minimum share of contact, percent" value={Math.round(n.minComm * 100)} min={0} max={100} step={5} unit="%" presets={[30, 50, 80]} onChange={(v) => setN('minComm', v / 100)} /> of
         the time{' '}
         <Clause tone="sun" checked={n.powerLasts} onChange={(v) => setN('powerLasts', v)}>and a battery that never runs empty</Clause>.
