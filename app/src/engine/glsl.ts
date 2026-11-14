@@ -277,6 +277,9 @@ uniform float uSteps;
 uniform vec4 uNeeds;      // min lit fraction, max dark hours, min comm fraction, min hours alive
 uniform float uPx;        // metres per screen pixel
 uniform float uEarthTint; // 1: tint ground that has the Earth in view
+uniform sampler2D uPsr;   // metres to permanent shadow, same grid as the metrics
+uniform float uNeedPsr;   // need: permanent shadow within this many metres (0: none)
+uniform float uPsrOn;     // 1 when uPsr holds data
 out vec4 o;
 void main(){
   vec2 p = uView.xy + uView.zw * gl_FragCoord.xy / uViewPx;
@@ -304,13 +307,16 @@ void main(){
   } else {
     vec2 uv = (p - uMRect.xy) / uMRect.zw;
     vec4 m0 = texture(uM0, uv), m1 = texture(uM1, uv), m2 = texture(uM2, uv);
+    float psr = uPsrOn > 0.5 ? texture(uPsr, uv).r : 1e7;
     float v = uMetric == 0 ? m0.x / uSteps : uMetric == 1 ? m0.z : uMetric == 2 ? m0.w / uSteps
-            : uMetric == 3 ? m1.y : uMetric == 4 ? m1.w : uMetric == 5 ? m2.y / uSteps : m2.w / uSteps;
+            : uMetric == 3 ? m1.y : uMetric == 4 ? m1.w : uMetric == 5 ? m2.y / uSteps : uMetric == 6 ? m2.w / uSteps : psr;
     float t = clamp((v - uRange.x) / (uRange.y - uRange.x), 0.0, 1.0);
-    bool ok = m0.x / uSteps >= uNeeds.x && m0.z <= uNeeds.y && m0.w / uSteps >= uNeeds.z && m1.w >= uNeeds.w;
+    bool ok = m0.x / uSteps >= uNeeds.x && m0.z <= uNeeds.y && m0.w / uSteps >= uNeeds.z && m1.w >= uNeeds.w
+           && (uNeedPsr <= 0.0 || psr <= uNeedPsr);
     float shade = 0.30 + 0.70 * relief;
     if (uMode == 1) {
       col = mix(vec3(0.012), uHue * uHue, pow(t, 1.3)) * shade + vec3(0.006) * relief;
+      if (uMetric == 7 && psr <= 0.0) col = vec3(0.0);   // permanent shadow itself: black
       if (!ok) col = mix(col, vec3(dot(col, vec3(0.33))), 0.35) * 0.55;
     } else {
       // ground that meets the brief keeps its relief; the rest stays readable as terrain, but dark
