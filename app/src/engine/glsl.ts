@@ -221,6 +221,7 @@ uniform float uLitMin;      // disk fraction that counts as lit
 uniform float uEarthMargin; // degrees the Earth's centre must clear the horizon
 uniform float uNeedDsn;
 uniform vec4 uPower;        // array W in full sun, load W when lit, load W in the dark, battery Wh
+uniform vec3 uPanel;        // 1 when the array is fixed, the azimuth it faces (rad), its tilt from flat (rad)
 layout(location = 0) out vec4 o0;
 layout(location = 1) out vec4 o1;
 layout(location = 2) out vec4 o2;
@@ -245,9 +246,12 @@ void main(){
     float dsn = floor(ear.w), ecl = fract(ear.w) / 0.999;
     float sEl = asin(clamp(dot(sun.xyz, up), -1.0, 1.0));
     float fs = 0.0;
+    float gain = 1.0; // share of the array's full output its orientation allows
     if (sEl > radians(EL_MIN)) {
       float sAz = atan(dot(sun.xyz, east), dot(sun.xyz, north));
       fs = diskFraction(sEl, hz(sAz), sun.w) * (1.0 - ecl);
+      // a fixed array gives the cosine of the angle between its normal and the Sun
+      if (uPanel.x > 0.5) gain = max(0.0, cos(sEl) * sin(uPanel.z) * cos(sAz - uPanel.y) + sin(sEl) * cos(uPanel.z));
     }
     vec3 e = ear.xyz - up * ((R + h0) * 1e-3);
     e = normalize(e);
@@ -266,7 +270,7 @@ void main(){
     s1.y = max(s1.y, s1.x);
     if (s2.z < 0.5) {
       float load = lit ? uPower.y : uPower.z;
-      s1.z = min(uPower.w, s1.z + (uPower.x * fs - load) * uDt);
+      s1.z = min(uPower.w, s1.z + (uPower.x * fs * gain - load) * uDt);
       s2.x = min(s2.x, s1.z);
       if (s1.z <= 0.0) { s2.z = 1.0; s1.z = 0.0; } else { s1.w += uDt; }
     }
