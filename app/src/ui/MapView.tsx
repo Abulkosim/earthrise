@@ -38,7 +38,7 @@ function clampView(v: MapViewState): MapViewState {
   return r > MAX_R ? { ...v, cx: (v.cx * MAX_R) / r, cy: (v.cy * MAX_R) / r } : v
 }
 // Points in the field. Starts at about a quarter of a million and shrinks on GPUs that take too long.
-let fieldBudget = 262144
+let fieldBudget = window.matchMedia('(pointer: coarse)').matches ? 65536 : 262144 // phones start smaller
 
 export function MapView(p: Props) {
   const wrap = useRef<HTMLDivElement>(null)
