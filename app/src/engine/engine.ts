@@ -93,7 +93,7 @@ export class Engine {
     canvas.addEventListener('webglcontextlost', (ev) => { ev.preventDefault(); this.lost = true; this.onLost?.() })
     this.fbo = gl.createFramebuffer()!
     this.fboEval = gl.createFramebuffer()!
-    for (const [name, fs] of Object.entries({ bake: G.FS_BAKE, probe: G.FS_PROBE, now: G.FS_NOW, eval: G.FS_EVAL, view: G.FS_VIEW }))
+    for (const [name, fs] of Object.entries({ bake: G.FS_BAKE, probe: G.FS_PROBE, now: G.FS_NOW, nowfast: G.FS_NOWFAST, eval: G.FS_EVAL, view: G.FS_VIEW }))
       this.progs[name] = this.program(fs, name)
     const m = data.manifest.dem
     this.tex.far = this.gridTex(data.far, m.far.n)
@@ -172,7 +172,7 @@ export class Engine {
     }
     bind(0, gl.TEXTURE_2D, this.tex.far); bind(1, gl.TEXTURE_2D, this.tex.mid); bind(2, gl.TEXTURE_2D, name === 'probe' ? this.tex.pfocus : this.tex.focus)
     bind(3, gl.TEXTURE_2D_ARRAY, this.tex.horizon); bind(4, gl.TEXTURE_2D, this.tex.ephem)
-    bind(8, gl.TEXTURE_2D, this.tex.now); bind(9, gl.TEXTURE_2D, this.tex.points); bind(10, gl.TEXTURE_2D, this.tex.psr)
+    bind(8, gl.TEXTURE_2D, this.nowTex ?? this.tex.now); bind(9, gl.TEXTURE_2D, this.tex.points); bind(10, gl.TEXTURE_2D, this.tex.psr)
     const st = this.srcState
     if (st) for (let i = 0; i < 3; i++) bind(5 + i, gl.TEXTURE_2D, st[i])
   }
@@ -330,9 +330,41 @@ export class Engine {
     this.use('now', { uField: [v.x, v.y, v.w, v.h], uFieldPx: [w, h], uMast: mast, uSun: se.sun, uEarth: se.earth })
     this.tri()
     this.nowRect = { ...v }
+    this.nowTex = this.tex.now
     this.stats.nowMs = performance.now() - t0
     return se
   }
+
+  /**
+   * The same picture from the cached horizons: one lookup per pixel instead of a walk, so it can
+   * be redrawn every frame while time plays. It covers the baked field at the field's resolution.
+   * Returns false when there is no cache to read (before the first bake, or during a new one).
+   */
+  renderNowFast(hours: number, mast: number): boolean {
+    if (!this.baked || !this.field || !this.tex.horizon) return false
+    const gl = this.gl, [w, h] = this.fieldPx, f = this.field
+    const key = `${w}x${h}`
+    if (!this.tex.nowFast || this.nowFastKey !== key) {
+      if (this.tex.nowFast) gl.deleteTexture(this.tex.nowFast)
+      this.tex.nowFast = this.floatTex(w, h, gl.RGBA16F, gl.LINEAR)
+      this.nowFastKey = key
+    }
+    const se = this.sunEarth(hours)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.tex.nowFast, 0)
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0])
+    gl.viewport(0, 0, w, h)
+    this.use('nowfast', { uField: [f.x, f.y, f.w, f.h], uFieldPx: [w, h], uMast: mast, uSun: se.sun, uEarth: se.earth })
+    this.tri()
+    this.nowRect = { ...f }
+    this.nowTex = this.tex.nowFast
+    return true
+  }
+  private nowTex: WebGLTexture | undefined
+  private nowFastKey = ''
+
+  /** Resolves when the GPU has finished what was issued so far. Lets the caller avoid piling up frames. */
+  idle(): Promise<void> { return this.gpuDone().catch(() => undefined) }
 
   // ---- horizon cache ----------------------------------------------------
   /** Compute the horizon in 360 directions for every pixel of the current view. */
