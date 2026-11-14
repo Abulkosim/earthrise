@@ -1,0 +1,61 @@
+/* Written with AI assistance (Claude); see the README. */
+.panorama {
+  position: relative;
+  min-width: 0;
+}
+
+.panorama-canvas {
+  display: block;
+  width: 100%;
+  background: var(--shadow);
+  cursor: grab;
+  touch-action: pan-y; /* page still scrolls vertically; horizontal drag and pinch come to us */
+  user-select: none;
+}
+.panorama-canvas:active { cursor: grabbing; }
+
+.panorama-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--gap-3);
+  padding-top: var(--gap-1);
+  font-size: var(--t-xs);
+  color: var(--dust-3);
+}
+
+.panorama-readout {
+  min-width: 0;
+  color: var(--dust-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.panorama-readout.is-hint { color: var(--dust-3); }
+
+.panorama-face {
+  display: flex;
+  flex: none;
+  gap: var(--gap-3);
+}
+.panorama-face button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dust-2);
+  cursor: pointer;
+  text-underline-offset: 3px;
+}
+.panorama-face button:hover:not(:disabled) { text-decoration: underline; }
+.panorama-face button.is-sun { text-decoration-color: var(--sun); }
+.panorama-face button.is-earth { text-decoration-color: var(--earth); }
+.panorama-face button:disabled {
+  color: var(--dust-3);
+  cursor: default;
+}
+
+.panorama-note {
+  margin: var(--gap-1) 0 0;
+  font-size: var(--t-xs);
+  color: var(--dust-3);
+}
