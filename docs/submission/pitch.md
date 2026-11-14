@@ -62,6 +62,11 @@ Open the app. Wait for the map (a few seconds).
    The lander died in a 20 m crater. We say so on the page: that is below what
    the data can see."
 
+8. Or **SLIM, January 2024**. "SLIM landed on its nose with its solar cells
+   facing west. The replay sets the array that way. The model gives no power
+   at landing and first light on 23 January. JAXA regained contact on the
+   28th."
+
 If the network or projector fails: the deck has a screenshot of every step.
 
 ## Numbers worth knowing by heart
@@ -97,8 +102,8 @@ page shows all of it and lets you rerun two checks.
 
 **What does it get wrong?**
 The map is 20 m per pixel, so it cannot see a boulder or a small crater. There
-is no thermal model. The lander is assumed upright with an array that tracks
-the Sun. All of this is listed on the validation page.
+is no thermal model. The antenna has no pointing limits and the battery model
+is simple. All of this is listed on the validation page.
 
 **Which NASA data do you use?**
 LOLA elevation maps from the Lunar Reconnaissance Orbiter, JPL's DE440
@@ -117,9 +122,9 @@ engineering team who need to agree on a site. A teacher showing why the south
 pole is hard. The brief is written in plain sentences for that reason.
 
 **What would you do next?**
-Finer terrain where NASA has it (5 m at the Artemis sites), a tilted lander
-and fixed solar panels, a thermal model for the night, and relay satellites
-besides direct contact with Earth.
+Finer terrain where NASA has it (5 m at the Artemis sites), a thermal model
+for the night, antenna pointing limits, and relay satellites besides direct
+contact with Earth.
 
 **Does it run on any computer?**
 It runs in a browser with no install. On a weak graphics card it uses fewer

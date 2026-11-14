@@ -98,7 +98,7 @@ comparison of permanent shadow with Goddard's map. An independent review of
 the engine code was part of the process, and its findings were fixed.
 
 Limits: 20 m terrain misses boulders and small craters; no thermal model; the
-lander is upright and its array tracks the Sun; the battery model is simple.
+antenna has no pointing limits; the battery model is simple.
 
 ### What benefits it has
 
