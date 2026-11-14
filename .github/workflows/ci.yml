@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude); see the README.
 name: ci
 on:
   pull_request:
@@ -21,6 +22,7 @@ jobs:
           cache-dependency-path: app/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - run: pnpm test
       - run: pnpm build
   reference:
     runs-on: ubuntu-latest
