@@ -91,7 +91,8 @@ button.text:hover { text-decoration-color: var(--dust-1); }
 .stay { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-2) var(--gap-4); }
 .stay dt { color: var(--dust-3); font-size: var(--t-xs); }
 .stay dd { font-size: var(--t-lg); font-weight: 600; font-stretch: 85%; }
-.stay div:last-child { grid-column: 1 / -1; }
+.stay div:nth-child(5) { grid-column: 1 / -1; }
+.stay div:nth-child(6) { grid-column: 1 / -1; }
 .verdict { margin-top: var(--gap-3); font-size: var(--t-md); color: var(--both); font-weight: 600; }
 .verdict.fail { color: var(--dust-2); font-weight: 400; }
 .actions { display: flex; flex-wrap: wrap; gap: var(--gap-2) var(--gap-4); margin-top: var(--gap-4); }
