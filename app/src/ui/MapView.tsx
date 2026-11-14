@@ -32,6 +32,11 @@ interface Props {
 }
 
 const MIN_MPP = 6, MAX_MPP = 900
+const MAX_R = 850e3 // the view centre stays inside the elevation data (60 S is 931 km from the pole)
+function clampView(v: MapViewState): MapViewState {
+  const r = Math.hypot(v.cx, v.cy)
+  return r > MAX_R ? { ...v, cx: (v.cx * MAX_R) / r, cy: (v.cy * MAX_R) / r } : v
+}
 // Points in the field. Starts at about a quarter of a million and halves on GPUs that take too long.
 let fieldBudget = 262144
 
@@ -145,6 +150,7 @@ export function MapView(p: Props) {
     if (!canvas.current || eng.current) return
     try {
       eng.current = new Engine(canvas.current, p.data)
+      eng.current.onLost = () => setError('The graphics context was lost. Reload the page.')
       p.onEngine?.(eng.current)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -198,7 +204,7 @@ export function MapView(p: Props) {
     if (d) {
       const dx = ev.clientX - d.x, dy = ev.clientY - d.y
       if (Math.abs(dx) + Math.abs(dy) > 3) d.moved = true
-      if (d.moved) p.onView({ cx: d.cx - dx * mpp, cy: d.cy + dy * mpp, mpp })
+      if (d.moved) p.onView(clampView({ cx: d.cx - dx * mpp, cy: d.cy + dy * mpp, mpp }))
       return
     }
     const [px, py] = local(ev)
@@ -208,7 +214,7 @@ export function MapView(p: Props) {
     const e = eng.current
     if (e && p.layer !== 'now') {
       const mt = e.readMetrics(x, y)
-      if (mt) text = `${fmtPct(mt.lit)} sunlit, longest dark ${Math.round(mt.longestDark)} h, ${fmtPct(mt.comm)} contact, power ${mt.hoursAlive >= p.brief.stayDays * 24 - 1.5 ? 'lasts' : `out after ${Math.round(mt.hoursAlive)} h`}`
+      if (mt) text = `${fmtPct(mt.lit)} sunlit, longest dark ${Math.round(mt.longestDark)} h, ${fmtPct(mt.comm)} contact, power ${mt.hoursAlive >= p.brief.stayDays * 24 - 0.5 ? 'lasts' : `out after ${Math.round(mt.hoursAlive)} h`}`
     }
     setHover({ lat, lon, text })
   }
@@ -232,7 +238,7 @@ export function MapView(p: Props) {
       const nm = Math.min(MAX_MPP, Math.max(MIN_MPP, q.mpp * k))
       // keep the point under the cursor fixed
       const x = q.cx + (px - r.width / 2) * q.mpp, y = q.cy - (py - r.height / 2) * q.mpp
-      live.current.onView({ cx: x - (px - r.width / 2) * nm, cy: y + (py - r.height / 2) * nm, mpp: nm })
+      live.current.onView(clampView({ cx: x - (px - r.width / 2) * nm, cy: y + (py - r.height / 2) * nm, mpp: nm }))
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
@@ -245,7 +251,7 @@ export function MapView(p: Props) {
       '+': { cx, cy, mpp: Math.max(MIN_MPP, mpp / 1.3) }, '=': { cx, cy, mpp: Math.max(MIN_MPP, mpp / 1.3) },
       '-': { cx, cy, mpp: Math.min(MAX_MPP, mpp * 1.3) },
     }
-    if (k[ev.key]) { ev.preventDefault(); p.onView(k[ev.key]) }
+    if (k[ev.key]) { ev.preventDefault(); p.onView(clampView(k[ev.key])) }
   }
 
   // ---- chart overlay ----------------------------------------------------
@@ -300,7 +306,7 @@ export function MapView(p: Props) {
     <div className="map" ref={wrap} tabIndex={0} onKeyDown={onKey} aria-label="Map of the lunar south pole. Arrow keys pan, plus and minus zoom."
       onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={() => setHover(null)}>
       <canvas ref={canvas} />
-      {error && <p className="map-error">The map needs WebGL 2 with float textures. {error}</p>}
+      {error && <p className="map-error">{error.includes('lost') ? error : `The map needs WebGL 2 with float textures. ${error}`}</p>}
       {overlay && (
         <svg className="map-chart" width={W} height={H} aria-hidden="true">
           <g className="graticule">
