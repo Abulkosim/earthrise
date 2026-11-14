@@ -45,7 +45,8 @@ export async function horizonCheck(eng: Engine, onProgress?: Progress, o: Horizo
   const fx: Fixtures = await r.json()
   if (o.growth) eng.growth = o.growth
   if (o.fine) eng.fine = o.fine
-  const mpp = o.mpp ?? 20, fieldW = o.fieldW ?? 512, doField = o.field ?? true
+  // 5 m per pixel: a view that small loads the 5 m tiles, the same terrain the reference used
+  const mpp = o.mpp ?? 5, fieldW = o.fieldW ?? 512, doField = o.field ?? true
   const all: number[] = [], rows: PointRow[] = []
   for (const [k, p] of fx.points.entries()) {
     onProgress?.(k, fx.points.length, p.name)
