@@ -17,7 +17,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       toastOptions={{
         classNames: {
-          toast: "glass-pop !rounded-full !px-4 !py-2.5 !w-auto !min-w-0 !gap-2 !font-sans !text-[13px] !text-dust-1",
+          toast: "glass-pop !rounded-full !px-4 !py-2.5 !w-max !max-w-[calc(100vw-24px)] !whitespace-nowrap max-[600px]:!mx-auto !gap-2 !font-sans !text-[13px] !text-dust-1",
         },
       }}
       style={

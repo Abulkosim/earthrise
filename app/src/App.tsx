@@ -288,7 +288,10 @@ function Main({ data }: { data: DataStore }) {
   }, [])
   const copyLink = () => {
     writeShared(data.epochMs, view, now, brief, layer, selected, compared)
-    void navigator.clipboard?.writeText(location.href).then(() => { toast('Link copied') })
+    // no clipboard (an insecure origin, a refused permission): say where the link is instead of saying nothing
+    const failed = () => { toast('The link is in the address bar') }
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(location.href).then(() => { toast('Link copied') }, failed)
+    else failed()
   }
   const statusText =
     status.phase === 'loading' ? 'Loading terrain…'
