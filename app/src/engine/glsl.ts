@@ -258,19 +258,14 @@ uniform sampler2D uM1;
 uniform sampler2D uM2;
 uniform vec4 uMRect;      // field rect of the metrics; w = 0 when empty
 uniform vec3 uSunDir;
-uniform int uMode;        // 0 light now, 1 metric
+uniform int uMode;        // 0 light now, 1 metric, 2 where the needs are met
 uniform int uMetric;
-uniform vec2 uRange;
+uniform vec2 uRange;      // metric value shown darkest and brightest
+uniform vec3 uHue;        // colour of the bright end
 uniform float uSteps;
-uniform float uHours;
 uniform vec4 uNeeds;      // min lit fraction, max dark hours, min comm fraction, min hours alive
 uniform float uPx;        // metres per screen pixel
 out vec4 o;
-vec3 ramp(float t){
-  t = clamp(t, 0.0, 1.0);
-  vec3 a = vec3(0.05, 0.06, 0.16), b = vec3(0.30, 0.20, 0.52), c = vec3(0.86, 0.42, 0.34), d = vec3(1.0, 0.93, 0.62);
-  return t < 0.33 ? mix(a, b, t / 0.33) : (t < 0.66 ? mix(b, c, (t - 0.33) / 0.33) : mix(c, d, (t - 0.66) / 0.34));
-}
 void main(){
   vec2 p = uView.xy + uView.zw * gl_FragCoord.xy / uViewPx;
   float d = max(uPx, uFocusRect.w > 0.5 ? uFocusRes : MID_RES);
@@ -296,11 +291,16 @@ void main(){
     vec4 m0 = texture(uM0, uv), m1 = texture(uM1, uv), m2 = texture(uM2, uv);
     float v = uMetric == 0 ? m0.x / uSteps : uMetric == 1 ? m0.z : uMetric == 2 ? m0.w / uSteps
             : uMetric == 3 ? m1.y : uMetric == 4 ? m1.w : uMetric == 5 ? m2.y / uSteps : m2.w / uSteps;
-    float t = (v - uRange.x) / (uRange.y - uRange.x);
-    col = ramp(t) * (0.35 + 0.65 * relief);
+    float t = clamp((v - uRange.x) / (uRange.y - uRange.x), 0.0, 1.0);
     bool ok = m0.x / uSteps >= uNeeds.x && m0.z <= uNeeds.y && m0.w / uSteps >= uNeeds.z && m1.w >= uNeeds.w;
-    if (uNeeds.x + uNeeds.z + uNeeds.w > 0.0 || uNeeds.y < 1e5) col = ok ? col : col * 0.22;
-    if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0 || uMRect.z <= 0.0) col = vec3(0.04) * relief;
+    float shade = 0.30 + 0.70 * relief;
+    if (uMode == 1) {
+      col = mix(vec3(0.012), uHue * uHue, pow(t, 1.3)) * shade + vec3(0.006) * relief;
+      if (!ok) col = mix(col, vec3(dot(col, vec3(0.33))), 0.35) * 0.55;
+    } else {
+      col = ok ? uHue * uHue * (0.25 + 0.75 * t) * shade : vec3(0.02) * shade;
+    }
+    if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0 || uMRect.z <= 0.0) col = vec3(0.012) * relief;
   }
   o = vec4(pow(col, vec3(1.0 / 2.2)), 1.0);
 }`

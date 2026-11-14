@@ -46,6 +46,8 @@ export class Engine {
   metricSteps = 0
   metricHours = 0
   focus: Focus | null = null
+  private pfocus: Focus | null = null
+  private pfocusKey = ''
   growth = 0.012
   fine = 0.5
   dmax = 400e3
@@ -75,6 +77,7 @@ export class Engine {
     this.tex.far = this.gridTex(data.far, m.far.n)
     this.tex.mid = this.gridTex(data.mid, m.mid.n)
     this.tex.focus = this.gridTex(null, FOCUS_N)
+    this.tex.pfocus = this.gridTex(null, FOCUS_N)
     this.tex.ephem = this.floatTex(CHUNK, 2, gl.RGBA32F, gl.NEAREST)
   }
 
@@ -122,7 +125,7 @@ export class Engine {
   private use(name: string, vals: Record<string, number | number[] | boolean>) {
     const gl = this.gl, pr = this.progs[name]
     gl.useProgram(pr.p)
-    const f = this.focus
+    const f = name === 'probe' ? this.pfocus : this.focus
     const all: Record<string, number | number[] | boolean> = {
       uFocusRect: f ? [f.left, f.top, f.size, 1] : [0, 0, 1, 0], uFocusRes: f ? f.res : 160,
       uGrowth: this.growth, uDmax: this.dmax, uFine: this.fine, ...vals,
@@ -131,7 +134,10 @@ export class Engine {
       const loc = pr.u.get(k)
       if (loc == null) continue
       if (typeof v === 'boolean') gl.uniform1f(loc, v ? 1 : 0)
-      else if (typeof v === 'number') (k === 'uSteps' && name === 'eval') || k === 'uMode' || k === 'uMetric' ? gl.uniform1i(loc, v) : gl.uniform1f(loc, v)
+      else if (typeof v === 'number') {
+        if ((k === 'uSteps' && name === 'eval') || k === 'uMode' || k === 'uMetric') gl.uniform1i(loc, v)
+        else gl.uniform1f(loc, v)
+      }
       else if (v.length === 2) gl.uniform2fv(loc, v)
       else if (v.length === 3) gl.uniform3fv(loc, v)
       else gl.uniform4fv(loc, v)
@@ -140,7 +146,7 @@ export class Engine {
       if (!t) return
       gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(target, t)
     }
-    bind(0, gl.TEXTURE_2D, this.tex.far); bind(1, gl.TEXTURE_2D, this.tex.mid); bind(2, gl.TEXTURE_2D, this.tex.focus)
+    bind(0, gl.TEXTURE_2D, this.tex.far); bind(1, gl.TEXTURE_2D, this.tex.mid); bind(2, gl.TEXTURE_2D, name === 'probe' ? this.tex.pfocus : this.tex.focus)
     bind(3, gl.TEXTURE_2D_ARRAY, this.tex.horizon); bind(4, gl.TEXTURE_2D, this.tex.ephem)
     bind(8, gl.TEXTURE_2D, this.tex.now); bind(9, gl.TEXTURE_2D, this.tex.points)
     const st = this.state[this.cur]
@@ -190,7 +196,7 @@ export class Engine {
         this.tri()
         gl.disable(gl.SCISSOR_TEST)
         await this.gpuDone()
-        if (job !== this.job) return false
+        if (job >= 0 && job !== this.job) return false
         worst = Math.max(worst, (performance.now() - t0) / weight)
       }
     }
@@ -207,24 +213,21 @@ export class Engine {
   }
   get mpp() { return this.view.w / this.canvas.width }
 
-  /** Load the finest tiles that cover the view with room to spare. Returns true when the focus changed. */
-  async loadFocus(): Promise<boolean> {
-    const v = this.view, span = Math.max(v.w, v.h) * 1.3
-    const level: TileLevel | null = span <= FOCUS_N * 20 ? 't20' : span <= FOCUS_N * 40 ? 't40' : span <= FOCUS_N * 80 ? 't80' : null
-    if (!level) {
-      const changed = this.focus !== null
-      this.focus = null; this.focusKey = ''
-      return changed
-    }
+  private pickLevel(span: number, cx: number, cy: number): TileLevel | null {
+    const r = Math.hypot(cx, cy)
+    const t20ok = r + span / 2 < this.data.manifest.dem.tiles.t20.max_radius_m + 20000
+    if (span <= FOCUS_N * 20 && t20ok) return 't20'
+    if (span <= FOCUS_N * 40) return 't40'
+    if (span <= FOCUS_N * 80) return 't80'
+    return null
+  }
+  /** Assemble a FOCUS_N grid of one tile level around a centre. */
+  private async assemble(level: TileLevel, cx: number, cy: number): Promise<{ grid: Float32Array; focus: Focus; key: string }> {
     const { n, res } = this.data.level(level)
     const size = FOCUS_N * res
-    // snap to a 256-texel lattice so small pans reuse the same grid
-    const snap = 256 * res
-    const left = Math.round((v.x + v.w / 2 - size / 2) / snap) * snap
-    const top = Math.round((v.y + v.h / 2 + size / 2) / snap) * snap
-    const key = `${level}/${left}/${top}`
-    if (key === this.focusKey) return false
-    this.focusKey = key
+    const snap = 256 * res // snap to a lattice so small pans reuse the same grid
+    const left = Math.round((cx - size / 2) / snap) * snap
+    const top = Math.round((cy + size / 2) / snap) * snap
     const col0 = Math.round(left / res + n / 2), row0 = Math.round(n / 2 - top / res)
     const grid = new Float32Array(FOCUS_N * FOCUS_N).fill(NODATA_M)
     const jobs: Promise<void>[] = []
@@ -242,11 +245,29 @@ export class Engine {
       }
     }
     await Promise.all(jobs)
+    return { grid, focus: { level, res, left, top, size }, key: `${level}/${left}/${top}` }
+  }
+
+  /** Load the finest tiles that cover the view with room to spare. Returns true when the focus changed. */
+  async loadFocus(): Promise<boolean> {
+    const v = this.view, cx = v.x + v.w / 2, cy = v.y + v.h / 2
+    const level = this.pickLevel(Math.max(v.w, v.h) * 1.3, cx, cy)
+    if (!level) {
+      const changed = this.focus !== null
+      this.focus = null; this.focusKey = ''
+      return changed
+    }
+    const { res } = this.data.level(level)
+    const size = FOCUS_N * res, snap = 256 * res
+    const key = `${level}/${Math.round((cx - size / 2) / snap) * snap}/${Math.round((cy + size / 2) / snap) * snap}`
+    if (key === this.focusKey) return false
+    this.focusKey = key
+    const a = await this.assemble(level, cx, cy)
     if (key !== this.focusKey) return false
     const gl = this.gl
     gl.bindTexture(gl.TEXTURE_2D, this.tex.focus)
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, FOCUS_N, FOCUS_N, gl.RED, gl.FLOAT, grid)
-    this.focus = { level, res, left, top, size }
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, FOCUS_N, FOCUS_N, gl.RED, gl.FLOAT, a.grid)
+    this.focus = a.focus
     return true
   }
 
@@ -404,7 +425,10 @@ export class Engine {
   }
 
   // ---- picture ----------------------------------------------------------
-  draw(opts: { mode: 'now' | 'metric'; hours: number; metric?: Metric; range?: [number, number]; needs?: [number, number, number, number] }) {
+  draw(opts: {
+    mode: 'now' | 'metric' | 'needs'; hours: number; metric?: Metric; range?: [number, number]; hue?: [number, number, number]
+    needs?: [number, number, number, number]
+  }) {
     const gl = this.gl, v = this.view
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.viewport(0, 0, this.canvas.width, this.canvas.height)
@@ -413,9 +437,9 @@ export class Engine {
     this.use('view', {
       uView: [v.x, v.y, v.w, v.h], uViewPx: [this.canvas.width, this.canvas.height], uPx: this.mpp,
       uNowRect: nr ? [nr.x, nr.y, nr.w, nr.h] : [0, 0, 0, 0], uMRect: mr ? [mr.x, mr.y, mr.w, mr.h] : [0, 0, 0, 0],
-      uSunDir: se.sun.slice(0, 3), uMode: opts.mode === 'now' ? 0 : 1, uMetric: METRICS.indexOf(opts.metric ?? 'lit'),
-      uRange: opts.range ?? [0, 1], uSteps: Math.max(1, this.metricSteps), uHours: this.metricHours,
-      uNeeds: opts.needs ?? [0, 1e6, 0, 0],
+      uSunDir: se.sun.slice(0, 3), uMode: opts.mode === 'now' ? 0 : opts.mode === 'metric' ? 1 : 2,
+      uMetric: METRICS.indexOf(opts.metric ?? 'lit'), uRange: opts.range ?? [0, 1], uHue: opts.hue ?? [1, 1, 1],
+      uSteps: Math.max(1, this.metricSteps), uNeeds: opts.needs ?? [0, 1e6, 0, 0],
     })
     this.tri()
   }
@@ -423,7 +447,20 @@ export class Engine {
   // ---- verification -----------------------------------------------------
   /** Horizon profiles (degrees) at given map points; result[i * naz + j] for point i, azimuth j. */
   async probe(points: { x: number; y: number; mast: number }[], naz = 720): Promise<{ el: Float32Array; ground: Float32Array }> {
-    const gl = this.gl, n = points.length, job = ++this.job
+    const gl = this.gl, n = points.length
+    // finest tiles around the points (they should lie within a few km of each other)
+    const cx = points.reduce((a, p) => a + p.x, 0) / n, cy = points.reduce((a, p) => a + p.y, 0) / n
+    const level = this.pickLevel(20000, cx, cy)
+    if (level && Math.hypot(cx, cy) < 320000) {
+      const a = await this.assemble(level, cx, cy)
+      if (a.key !== this.pfocusKey) {
+        gl.bindTexture(gl.TEXTURE_2D, this.tex.pfocus)
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, FOCUS_N, FOCUS_N, gl.RED, gl.FLOAT, a.grid)
+        this.pfocusKey = a.key
+      }
+      this.pfocus = a.focus
+    } else this.pfocus = null
+    const job = -1 // a probe neither cancels a running bake nor is cancelled by one
     const pts = new Float32Array(n * 4)
     points.forEach((p, i) => pts.set([p.x, p.y, p.mast, 0], i * 4))
     if (this.tex.points) gl.deleteTexture(this.tex.points)
