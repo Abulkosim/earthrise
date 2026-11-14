@@ -8,7 +8,7 @@ import { DataStore } from './engine/data'
 import type { Engine } from './engine/engine'
 import { computeSeries, landingWindows, ll2xy, sphereHorizon, summarize } from './model/sitecalc'
 import type { Horizon, Site } from './model/types'
-import { defaultBrief, fmtDate, fmtDateTime, fmtLat, fmtLon, type Brief as BriefT, type LayerId } from './state'
+import { LAYERS, defaultBrief, fmtDate, fmtDateTime, fmtLat, fmtLon, type Brief as BriefT, type LayerId } from './state'
 import { Brief, LayerPicker } from './ui/Brief'
 import { Calendar, type CalendarData } from './ui/Calendar'
 import { MapView, type Feature, type MapStatus, type MapViewState } from './ui/MapView'
@@ -39,9 +39,63 @@ export default function App() {
   return <Main data={data} />
 }
 
+// ---- the view as a link ------------------------------------------------
+// Everything that defines what is on screen goes into the address, so a planner can send a
+// scenario to a colleague: place, zoom, time, landing, stay, brief, layer and sites.
+interface Shared { view?: MapViewState; now?: number; brief?: BriefT; layer?: LayerId; selected?: Site; compared?: Site[] }
+const customSite = (lat: number, lon: number): Site => ({ id: `pt-${lat.toFixed(4)}-${lon.toFixed(4)}`, name: `${fmtLat(lat)} ${fmtLon(lon)}`, lat, lon, kind: 'custom' })
+function siteFromToken(t: string): Site | undefined {
+  const known = SITES.find((s) => s.id === t)
+  if (known) return known
+  const m = t.split(',').map(Number)
+  return m.length === 2 && m.every(Number.isFinite) && Math.abs(m[0]) <= 90 ? customSite(m[0], ((m[1] % 360) + 360) % 360) : undefined
+}
+const siteToken = (s: Site) => (s.kind === 'custom' ? `${s.lat.toFixed(4)},${s.lon.toFixed(4)}` : s.id)
+function readShared(epochMs: number): Shared {
+  const q = new URLSearchParams(location.hash.slice(1))
+  const out: Shared = {}
+  try {
+    const c = q.get('c')?.split(',').map(Number)
+    if (c && c.length === 3 && c.every(Number.isFinite) && c[2] > 0) out.view = { cx: c[0], cy: c[1], mpp: c[2] }
+    const base = defaultBrief(epochMs)
+    const l = Number(q.get('l')), d = Number(q.get('d'))
+    const extra = q.get('b') ? JSON.parse(q.get('b')!) : {}
+    if (q.has('l') || q.has('d') || q.has('b')) {
+      out.brief = {
+        landing: q.has('l') && Number.isFinite(l) ? l : base.landing,
+        stayDays: q.has('d') && d >= 1 && d <= 60 ? Math.round(d) : base.stayDays,
+        mission: { ...base.mission, ...(extra.m ?? {}) }, needs: { ...base.needs, ...(extra.n ?? {}) },
+      }
+    }
+    const t = Number(q.get('t'))
+    if (q.has('t') && Number.isFinite(t)) out.now = t
+    const layer = q.get('layer')
+    if (layer && LAYERS.some((x) => x.id === layer)) out.layer = layer as LayerId
+    if (q.get('site')) out.selected = siteFromToken(q.get('site')!)
+    if (q.has('cmp')) out.compared = q.get('cmp')!.split(';').filter(Boolean).map(siteFromToken).filter((s): s is Site => !!s).slice(0, 6)
+  } catch { /* a damaged link falls back to the defaults */ }
+  return out
+}
+function writeShared(epochMs: number, view: MapViewState, now: number, brief: BriefT, layer: LayerId, selected: Site | null, compared: Site[]) {
+  const base = defaultBrief(epochMs)
+  const diff = <T extends object>(a: T, b: T) => Object.fromEntries(Object.entries(a).filter(([k, v]) => (b as Record<string, unknown>)[k] !== v))
+  const m = diff(brief.mission, base.mission), n = diff(brief.needs, base.needs)
+  const q = new URLSearchParams()
+  q.set('c', `${Math.round(view.cx)},${Math.round(view.cy)},${+view.mpp.toFixed(2)}`)
+  q.set('t', String(Math.round(now)))
+  q.set('l', String(Math.round(brief.landing)))
+  q.set('d', String(brief.stayDays))
+  if (Object.keys(m).length || Object.keys(n).length) q.set('b', JSON.stringify({ m, n }))
+  q.set('layer', layer)
+  if (selected) q.set('site', siteToken(selected))
+  q.set('cmp', compared.map(siteToken).join(';'))
+  history.replaceState(null, '', `#${q.toString()}`)
+}
+
 function Main({ data }: { data: DataStore }) {
-  const [view, setView] = useState<MapViewState>({ cx: -6000, cy: -9000, mpp: 42 })
-  const [brief, setBriefRaw] = useState<BriefT>(() => defaultBrief(data.epochMs))
+  const [shared] = useState(() => readShared(data.epochMs))
+  const [view, setView] = useState<MapViewState>(shared.view ?? { cx: -6000, cy: -9000, mpp: 42 })
+  const [brief, setBriefRaw] = useState<BriefT>(() => shared.brief ?? defaultBrief(data.epochMs))
   // every change of the brief passes here, so the landing can never leave the ephemeris table
   const setBrief = useCallback((u: BriefT | ((b: BriefT) => BriefT)) => {
     setBriefRaw((b) => {
@@ -51,11 +105,11 @@ function Main({ data }: { data: DataStore }) {
     })
   }, [data])
   const [replay, setReplay] = useState<Replay>()
-  const [now, setNow] = useState(() => defaultBrief(data.epochMs).landing + 30)
-  const [spanT0, setSpanT0] = useState(() => defaultBrief(data.epochMs).landing - 20 * 24)
-  const [layer, setLayer] = useState<LayerId>('now')
-  const [selected, setSelected] = useState<Site | null>(null)
-  const [compared, setCompared] = useState<Site[]>(() =>
+  const [now, setNow] = useState(() => shared.now ?? (shared.brief ?? defaultBrief(data.epochMs)).landing + 30)
+  const [spanT0, setSpanT0] = useState(() => (shared.brief ?? defaultBrief(data.epochMs)).landing - 20 * 24)
+  const [layer, setLayer] = useState<LayerId>(shared.layer ?? 'now')
+  const [selected, setSelected] = useState<Site | null>(shared.selected ?? null)
+  const [compared, setCompared] = useState<Site[]>(() => shared.compared ??
     ['connecting ridge', 'malapert', 'mons mouton plateau'].map((q) => SITES.find((s) => s.name.toLowerCase().includes(q))).filter((s): s is Site => !!s).slice(0, 3))
   const [status, setStatus] = useState<MapStatus>({ phase: 'loading', progress: 0, bakeMs: 0, evalMs: 0, pixels: 0, pass: null })
   const [playing, setPlaying] = useState(false)
@@ -184,11 +238,23 @@ function Main({ data }: { data: DataStore }) {
   const pick = (lat: number, lon: number, site?: Site) => {
     // the pole itself has no north; a metre away is as good and keeps every frame defined
     const la = Math.max(lat, -89.9999)
-    setSelected(site ?? { id: `pt-${la.toFixed(4)}-${lon.toFixed(4)}`, name: `${fmtLat(la)} ${fmtLon(lon)}`, lat: la, lon, kind: 'custom' })
+    setSelected(site ?? customSite(la, lon))
   }
   const toggleCompare = (s: Site) => setCompared((c) => (c.some((t) => t.id === s.id) ? c.filter((t) => t.id !== s.id) : [...c, s].slice(-6)))
 
   const [coord, setCoord] = useState({ lat: '-89.45', lon: '222.69' })
+
+  // keep the address in step with the view (not while time is running: that would write 60 times a second)
+  useEffect(() => {
+    if (playing || slipping) return
+    const t = window.setTimeout(() => writeShared(data.epochMs, view, now, brief, layer, selected, compared), 400)
+    return () => window.clearTimeout(t)
+  }, [data, view, now, brief, layer, selected, compared, playing, slipping])
+  const [copied, setCopied] = useState(false)
+  const copyLink = () => {
+    writeShared(data.epochMs, view, now, brief, layer, selected, compared)
+    void navigator.clipboard?.writeText(location.href).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000) })
+  }
   const statusText =
     status.phase === 'loading' ? 'Loading terrain…'
     : status.phase === 'horizons' ? `Tracing the horizon in 360 directions from ${status.pixels.toLocaleString('en')} points… ${Math.round(status.progress * 100)}%`
@@ -210,7 +276,10 @@ function Main({ data }: { data: DataStore }) {
           {(playing || slipping) && <button type="button" className="text" onClick={stopShows}>Stop</button>}
         </p>
         <p className="status narrow" role="status">{statusText}</p>
-        <nav><a href={`${import.meta.env.BASE_URL}validation.html`}>How we know it is right</a></nav>
+        <nav>
+          <button type="button" className="text" onClick={copyLink}>{copied ? 'Link copied' : 'Copy a link to this view'}</button>
+          <a href={`${import.meta.env.BASE_URL}validation.html`}>How we know it is right</a>
+        </nav>
       </header>
 
       <div className="left">
@@ -229,7 +298,7 @@ function Main({ data }: { data: DataStore }) {
           <form className="coords" onSubmit={(e) => {
             e.preventDefault()
             const lat = Math.max(Number(coord.lat), -89.9999), lon = Number(coord.lon)
-            if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90) goTo({ id: `pt-${lat.toFixed(4)}-${lon.toFixed(4)}`, name: `${fmtLat(lat)} ${fmtLon(lon)}`, lat, lon: ((lon % 360) + 360) % 360, kind: 'custom' })
+            if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90) goTo(customSite(lat, ((lon % 360) + 360) % 360))
           }}>
             <label>Latitude <input value={coord.lat} inputMode="decimal" onChange={(e) => setCoord({ ...coord, lat: e.target.value })} /></label>
             <label>Longitude east <input value={coord.lon} inputMode="decimal" onChange={(e) => setCoord({ ...coord, lon: e.target.value })} /></label>
