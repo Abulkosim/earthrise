@@ -101,15 +101,16 @@ function Main({ data }: { data: DataStore }) {
     }
   }), [compared, seriesOf, brief.mission, brief.needs, k0, stay, n])
 
-  // play: 12 hours of lunar time per second
+  // play: hours of lunar time per second of wall time
+  const [speed, setSpeed] = useState(12)
   useEffect(() => {
     if (!playing) return
     let raf = 0, last = performance.now()
     const tick = (t: number) => {
-      const dt = (t - last) / 1000
+      const dt = Math.min(0.1, (t - last) / 1000)
       last = t
       setNow((h) => {
-        const nh = h + dt * 12
+        const nh = h + dt * speed
         if (nh >= spanT0 + SPAN_H - 1) { setPlaying(false); return spanT0 + SPAN_H - 1 }
         return nh
       })
@@ -117,9 +118,39 @@ function Main({ data }: { data: DataStore }) {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [playing, spanT0])
+  }, [playing, spanT0, speed])
 
-  const goTo = (s: Site) => {
+  // "Slip the landing": move the landing date forward five weeks while the map and calendar follow
+  const [slipping, setSlipping] = useState(false)
+  useEffect(() => {
+    if (!slipping) return
+    let raf = 0, last = performance.now(), acc = 0
+    const start = brief.landing
+    const tick = (t: number) => {
+      acc += Math.min(0.1, (t - last) / 1000) * 60 // 2.5 days per second
+      last = t
+      if (acc >= 35 * 24) { setSlipping(false); return }
+      const h = Math.round(start + acc)
+      setBrief((b) => (b.landing === h ? b : { ...b, landing: h }))
+      setNow(h + 6)
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+    // the start date is read once, when the slip begins
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slipping])
+  const stopShows = () => { setPlaying(false); setSlipping(false) }
+  const showMonth = () => { stopShows(); setLayer('now'); setSpeed(30); setNow(brief.landing); setPlaying(true) }
+  const showSlip = () => { stopShows(); setLayer('needs'); setSlipping(true) }
+  const showRidge = () => {
+    stopShows()
+    const s = SITES.find((t) => t.name.toLowerCase().includes('connecting ridge'))
+    if (s) goTo(s)
+    setLayer('now'); setSpeed(8); setNow(brief.landing); setPlaying(true)
+  }
+
+  function goTo(s: Site) {
     setSelected(s)
     if (s.lat <= POLAR_LIMIT) {
       const [x, y] = ll2xy(s.lat, s.lon)
@@ -145,6 +176,13 @@ function Main({ data }: { data: DataStore }) {
       <header className="top">
         <h1 className="place">Earthrise</h1>
         <p className="tag">Every landing site at the Moon’s south pole, every hour, on one map.</p>
+        <p className="shows">
+          Show me{' '}
+          <button type="button" className="text" onClick={showMonth}>a lunar month of light</button>
+          <button type="button" className="text" onClick={showSlip}>a landing date that slips</button>
+          <button type="button" className="text" onClick={showRidge}>the view from the ridge</button>
+          {(playing || slipping) && <button type="button" className="text" onClick={stopShows}>Stop</button>}
+        </p>
         <p className="status narrow" role="status">{statusText}</p>
         <nav><a href={`${import.meta.env.BASE_URL}validation.html`}>How we know it is right</a></nav>
       </header>
@@ -181,7 +219,14 @@ function Main({ data }: { data: DataStore }) {
         onEngine={(e) => { setEngine(e); (window as unknown as { __earthrise: unknown }).__earthrise = { engine: e, data } }}
       />
 
-      {status.pass !== null && layer !== 'now' && (
+      {layer !== 'now' && status.phase !== 'idle' && (
+        <p className="map-note" role="status">
+          {status.phase === 'horizons'
+            ? `Tracing the horizon around every point in view… ${Math.round(status.progress * 100)}%`
+            : status.phase === 'mission' ? 'Running the stay at every point…' : 'Loading terrain…'}
+        </p>
+      )}
+      {status.pass !== null && layer !== 'now' && status.phase === 'idle' && (
         <p className="map-note" role="status">
           {status.pass === 0
             ? `No ground in view meets the brief for a landing on ${fmtDate(data.epochMs + brief.landing * 3600e3)}. Drag the stay in the timeline to try other dates, or relax a need.`
@@ -199,7 +244,7 @@ function Main({ data }: { data: DataStore }) {
 
       <footer className="bottom">
         <div className="transport">
-          <button type="button" className="text" onClick={() => setPlaying((v) => !v)}>{playing ? 'Pause' : 'Play time'}</button>
+          <button type="button" className="text" onClick={() => { setSlipping(false); setSpeed(12); setPlaying((v) => !v) }}>{playing ? 'Pause' : 'Play time'}</button>
           <span className="clock narrow">{fmtDateTime(data.epochMs + now * 3600e3)} UTC</span>
           <button type="button" className="text" onClick={() => setNow(brief.landing)}>Jump to landing</button>
         </div>
