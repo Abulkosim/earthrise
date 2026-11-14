@@ -235,10 +235,15 @@
   height: 20px;
 }
 
+/* The region ("(Artemis III region)") shows whole or not at all: when it does not fit beside the
+   name it wraps to a second line, which the fixed height hides. Half a region reads as a mistake. */
 .ribbon-site {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 6px;
+  column-gap: 6px;
+  height: 20px;
+  overflow: hidden;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -260,10 +265,8 @@ button.ribbon-site { cursor: pointer; }
   line-height: 20px;
 }
 .ribbon-region {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: none;
+  line-height: 20px;
   color: var(--dust-3);
   font-size: 11.5px;
   font-stretch: 85%;
@@ -369,10 +372,13 @@ button.ribbon-site { cursor: pointer; }
   .ribbon-rows { overflow: visible; -webkit-mask-image: none !important; mask-image: none !important; }
 }
 @media (max-width: 699.98px) {
-  .ribbon-name { padding: 8px 6px 8px 8px; }
-  .ribbon-site-main { font-size: 14px; }
-  .ribbon-region { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .ribbon-summary { column-gap: 8px; font-size: 11px; }
+  /* a phone: the name and the numbers take the full width, the lanes sit under them */
+  /* above the playhead line and the stay band, which run through every row */
+  .ribbon-name { grid-column: 1 / -1; padding: 8px 4px 0 10px; position: relative; z-index: 3; }
+  .ribbon-lanes { grid-column: 2; padding: 4px 0 9px; }
+  .ribbon-site-main { font-size: 15px; }
+  .ribbon-summary { column-gap: 10px; font-size: 11.5px; }
+  .ribbon-dies { display: inline-flex; font-size: 11.5px; }
   .ribbon-hint { display: none; }
   .ribbon-utc > span { right: 8px; }
   .ribbon-empty { flex-wrap: wrap; }
