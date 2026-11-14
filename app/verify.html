@@ -1,18 +1,35 @@
 <!doctype html>
 <html lang="en">
+  <!-- Written with AI assistance (Claude); see the README.
+       Developer page: the GPU engine against the reference model. Shares the tokens and fonts of the map (src/index.css). -->
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Earthrise engine check</title>
+    <link rel="stylesheet" href="/src/index.css" />
     <style>
-      body { font: 13px/1.5 ui-monospace, Menlo, monospace; background: #101114; color: #d8d8d2; margin: 24px; }
-      canvas { width: 480px; height: 480px; display: block; margin: 12px 0; }
-      pre { white-space: pre-wrap; }
+      html, body { height: auto; min-height: 100%; }
+      body { margin: 0; padding: 0 16px 64px; font-size: 15px; line-height: 1.55; }
+      .vhead { display: flex; align-items: baseline; gap: 16px; max-width: 980px; margin: 0 auto; padding: 22px 0 18px; border-bottom: 1px solid var(--hairline); }
+      .vhead a { font-family: var(--font-place); font-style: italic; font-size: 23px; color: var(--dust-1); text-decoration: none; }
+      .vhead h1 { margin: 0; font-size: 15px; font-weight: 520; color: var(--dust-2); }
+      main { max-width: 980px; margin: 28px auto 0; display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 1fr); gap: 24px; align-items: start; }
+      canvas { display: block; width: 100%; aspect-ratio: 1; border-radius: 16px; background: var(--ground-1); box-shadow: inset 0 0 0 1px var(--glass-border), var(--glass-shadow); }
+      pre {
+        margin: 0; padding: 18px 20px; min-height: 120px; overflow-x: auto; white-space: pre;
+        border-radius: 16px; background: rgba(20, 20, 23, 0.62); box-shadow: var(--glass-highlight), inset 0 0 0 1px var(--glass-border);
+        font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; line-height: 1.7; color: var(--dust-1);
+      }
+      @media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } canvas { max-width: 480px; } }
     </style>
   </head>
   <body>
-    <h1>Engine check: GPU against the reference model</h1>
-    <canvas id="c" width="768" height="768"></canvas>
-    <pre id="out">loading…</pre>
+    <header class="vhead"><a href="./">Earthrise</a><h1>Engine check: GPU against the reference model</h1></header>
+    <main>
+      <canvas id="c" width="768" height="768"></canvas>
+      <pre id="out">loading…</pre>
+    </main>
     <script type="module" src="/src/verify.ts"></script>
   </body>
 </html>

@@ -7,6 +7,7 @@ import { Engine, type Metric } from '../engine/engine'
 import { ll2xy, xy2ll } from '../model/sitecalc'
 import type { Site } from '../model/types'
 import { HUES, LAYERS, fmtLat, fmtLon, fmtPct, needsVector, type Brief, type LayerId } from '../state'
+import { useChromeInsets } from './chrome'
 import './MapView.css'
 
 export interface MapViewState { cx: number; cy: number; mpp: number } // centre in map metres, metres per CSS pixel
@@ -46,7 +47,7 @@ export function MapView(p: Props) {
   const eng = useRef<Engine | null>(null)
   const [size, setSize] = useState<[number, number]>([0, 0])
   const [error, setError] = useState<string | null>(null)
-  const [hover, setHover] = useState<{ lat: number; lon: number; text: string } | null>(null)
+  const [hover, setHover] = useState<{ lat: number; lon: number; text: string; px: number; py: number } | null>(null)
   const live = useRef(p)
   live.current = p
   const dirty = useRef(false)
@@ -225,7 +226,10 @@ export function MapView(p: Props) {
     if (d) {
       const dx = ev.clientX - d.x, dy = ev.clientY - d.y
       if (Math.abs(dx) + Math.abs(dy) > 3) d.moved = true
-      if (d.moved) p.onView(clampView({ cx: d.cx - dx * mpp, cy: d.cy + dy * mpp, mpp }))
+      if (d.moved) {
+        if (hover) setHover(null) // the readout would point at ground that has moved away
+        p.onView(clampView({ cx: d.cx - dx * mpp, cy: d.cy + dy * mpp, mpp }))
+      }
       return
     }
     const [px, py] = local(ev)
@@ -237,7 +241,7 @@ export function MapView(p: Props) {
       const mt = e.readMetrics(x, y)
       if (mt) text = `${Number.isFinite(mt.psrDistance) ? (mt.psrDistance <= 0 ? 'permanent shadow, ' : `permanent shadow ${(mt.psrDistance / 1000).toFixed(1)} km away, `) : ''}${fmtPct(mt.lit)} sunlit, longest dark ${Math.round(mt.longestDark)} h, ${fmtPct(mt.comm)} contact, power ${mt.hoursAlive >= p.brief.stayDays * 24 - 0.5 ? 'lasts' : `out after ${Math.round(mt.hoursAlive)} h`}`
     }
-    setHover({ lat, lon, text })
+    setHover({ lat, lon, text, px, py })
   }
   const onUp = (ev: React.PointerEvent) => {
     const d = drag.current
@@ -305,16 +309,53 @@ export function MapView(p: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [W, H, cx, cy, mpp, p.features])
 
+  // The part of the map that no panel covers: the chrome (Sun and Earth marks, hover readout) stays inside it.
+  const insets = useChromeInsets()
+  const free = (() => {
+    // the bottom 40 px of it hold the scale and the status pill
+    const f = { l: insets.left, r: W - insets.right, t: insets.top, b: H - insets.bottom - 40 }
+    return f.r - f.l > 200 && f.b - f.t > 160 ? f : { l: 0, r: W, t: 0, b: H - 40 }
+  })()
+  const freeX = (free.l + free.r) / 2, freeY = (free.t + free.b) / 2
+
   // direction of the Sun and the Earth across the map, from the ephemeris
   const se = p.data.sample(p.now)
   const edge = (vx: number, vy: number) => {
     const n = Math.hypot(vx, vy) || 1
     const ux = vx / n, uy = vy / n
-    const t = Math.min((W / 2 - 22) / Math.abs(ux || 1e-9), (H / 2 - 22) / Math.abs(uy || 1e-9))
-    return { x: W / 2 + ux * t, y: H / 2 - uy * t, ang: (Math.atan2(-uy, ux) * 180) / Math.PI }
+    const t = Math.min(((free.r - free.l) / 2 - 26) / Math.abs(ux || 1e-9), ((free.b - free.t) / 2 - 26) / Math.abs(uy || 1e-9))
+    const x = freeX + ux * t
+    let y = freeY - uy * t
+    // the legend chip and the map note sit over the top centre of the free map: stay under them
+    // (under 1100 px they lie on the map itself and the chip takes two lines)
+    const stackHalf = Math.min(350, (free.r - free.l) / 2) + 16
+    const stackH = (insets.top > 0 ? 76 : 100) + (p.layer === 'now' ? 0 : 44)
+    if (Math.abs(x - freeX) < stackHalf) y = Math.max(y, Math.min(freeY, free.t + stackH))
+    return { x, y, side: x > freeX ? 'left' : 'right' }
   }
   const sunEdge = edge(se[1], se[0])
   const earthEdge = edge(se[5], se[4])
+
+  // names of the sites that carry one (selected, compared, or all of them when zoomed in), as pills over the chart
+  const labels: { id: string; name: string; px: number; py: number; sel: boolean }[] = []
+  let selMark: { px: number; py: number } | null = null
+  let customSel: { px: number; py: number } | null = null
+  if (W >= 8) {
+    for (const s of p.sites) {
+      const [x, y] = ll2xy(s.lat, s.lon)
+      const px = sx(x), py = sy(y)
+      if (px < -20 || px > W + 20 || py < -20 || py > H + 20) continue
+      const sel = p.selected?.id === s.id
+      if (sel) selMark = { px, py }
+      if (sel || p.compared.includes(s.id) || mpp < 22) labels.push({ id: s.id, name: s.name, px, py, sel })
+    }
+    if (p.selected && !p.sites.some((s) => s.id === p.selected!.id)) {
+      const [x, y] = ll2xy(p.selected.lat, p.selected.lon)
+      customSel = { px: sx(x), py: sy(y) }
+      selMark = customSel
+      labels.push({ id: p.selected.id, name: p.selected.name, px: customSel.px, py: customSel.py, sel: true })
+    }
+  }
 
   const scaleKm = (() => {
     const target = (140 * mpp) / 1000
@@ -363,36 +404,45 @@ export function MapView(p: Props) {
               return (
                 <g key={s.id} className={`site${sel ? ' sel' : ''}${cmp ? ' cmp' : ''}`} transform={`translate(${px} ${py})`}
                   onPointerDown={(ev) => ev.stopPropagation()} onClick={() => p.onPick(s.lat, s.lon, s)}>
-                  <circle r={sel ? 7 : 4.5} />
-                  {(sel || cmp || mpp < 22) && <text x={10} y={4} className="place">{s.name}</text>}
+                  <circle className="hit" r={12} />
+                  <circle className="under" r={sel ? 7 : 4.5} />
+                  <circle className="ring" r={sel ? 7 : 4.5} />
+                  {sel && <circle className="core" r={2.5} />}
                 </g>
               )
             })}
-            {p.selected && !p.sites.some((s) => s.id === p.selected!.id) && (() => {
-              const [x, y] = ll2xy(p.selected.lat, p.selected.lon)
-              return <g className="site sel" transform={`translate(${sx(x)} ${sy(y)})`}><circle r={7} /><text x={11} y={4} className="place">{p.selected.name}</text></g>
-            })()}
-          </g>
-          <g className="toward">
-            <g transform={`translate(${sunEdge.x} ${sunEdge.y})`}>
-              <circle r={5} className="sun" />
-              <text x={sunEdge.x > W / 2 ? -10 : 10} y={4} textAnchor={sunEdge.x > W / 2 ? 'end' : 'start'}>to the Sun</text>
-            </g>
-            <g transform={`translate(${earthEdge.x} ${earthEdge.y})`}>
-              <circle r={5} className="earth" />
-              <text x={earthEdge.x > W / 2 ? -10 : 10} y={4} textAnchor={earthEdge.x > W / 2 ? 'end' : 'start'}>to the Earth</text>
-            </g>
-          </g>
-          <g className="scale" transform={`translate(${W - 24 - (scaleKm * 1000) / mpp} ${H - 22})`}>
-            <line x1={0} y1={0} x2={(scaleKm * 1000) / mpp} y2={0} />
-            <line x1={0} y1={-4} x2={0} y2={4} /><line x1={(scaleKm * 1000) / mpp} y1={-4} x2={(scaleKm * 1000) / mpp} y2={4} />
-            <text x={(scaleKm * 1000) / mpp / 2} y={-7} textAnchor="middle">{scaleKm >= 1 ? `${scaleKm} km` : `${scaleKm * 1000} m`}</text>
+            {customSel && (
+              <g className="site sel" transform={`translate(${customSel.px} ${customSel.py})`}>
+                <circle className="under" r={7} /><circle className="ring" r={7} /><circle className="core" r={2.5} />
+              </g>
+            )}
           </g>
         </svg>
       )}
-      {hover && (
-        <p className="map-readout narrow">{fmtLat(hover.lat, 3)} {fmtLon(hover.lon, 2)}{hover.text ? `   ${hover.text}` : ''}</p>
+      {overlay && (
+        <div className="map-marks" aria-hidden="true">
+          {labels.map((l) => (
+            <span key={l.id} className={`site-label place${l.sel ? ' sel' : ''}`} style={{ translate: `${Math.round(l.px + (l.sel ? 15 : 11))}px ${Math.round(l.py)}px` }}>{l.name}</span>
+          ))}
+          {selMark && <span className="site-pulse" style={{ translate: `${selMark.px}px ${selMark.py}px` }} />}
+          <span className="toward-mark is-sun" data-side={sunEdge.side} style={{ translate: `${sunEdge.x}px ${sunEdge.y}px` }}><i /><b>to the Sun</b></span>
+          <span className="toward-mark is-earth" data-side={earthEdge.side} style={{ translate: `${earthEdge.x}px ${earthEdge.y}px` }}><i /><b>to the Earth</b></span>
+          <span className="map-scale narrow">
+            <i style={{ width: (scaleKm * 1000) / mpp }} />
+            {scaleKm >= 1 ? `${scaleKm} km` : `${scaleKm * 1000} m`}
+          </span>
+        </div>
       )}
+      {hover && (() => {
+        // beside the pointer, on whichever side has room in the free part of the map
+        const left = hover.px > free.r - 300, up = hover.py > free.b - 96
+        return (
+          <p className="map-readout glass-quiet" style={{ translate: `${Math.round(hover.px + (left ? -14 : 16))}px ${Math.round(hover.py + (up ? -12 : 18))}px`, transform: `translate(${left ? '-100%' : '0'}, ${up ? '-100%' : '0'})` }}>
+            <span className="where">{fmtLat(hover.lat, 3)} {fmtLon(hover.lon, 2)}</span>
+            {hover.text && <span className="what">{hover.text}</span>}
+          </p>
+        )
+      })()}
     </div>
   )
 }

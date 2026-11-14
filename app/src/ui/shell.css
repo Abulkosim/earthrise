@@ -1,0 +1,289 @@
+/*
+  Written with AI assistance (Claude); see the README.
+
+  The shell: where the floating panels sit over the full-screen map.
+
+  From 1100 px up the map is fixed to the whole screen and never changes size (a size change
+  throws away seconds of GPU work). The panels are cells of one grid laid over it, 14 px from the
+  edges. Under 1100 px the map takes the top 58% of the screen height and the panels stack below it.
+
+  Class names that scripts rely on: .app, .app > .map, .top, .left, .bottom, .sheet, .map-note,
+  .status, .layer, .brief, .replays, .intro. New wrappers: .right (site panel), .stage (the free
+  cell over the map), .dock (layer pills), .legend-chip, .status-pill, .timeline-dock.
+*/
+
+.boot {
+  margin: 0;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  color: var(--dust-2);
+  font-size: 15px;
+  text-align: center;
+}
+.boot::before {
+  content: 'Earthrise';
+  font-family: var(--font-place);
+  font-style: italic;
+  font-size: 40px;
+  line-height: 1;
+  color: var(--dust-1);
+}
+
+@keyframes map-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.app > .map { animation: map-in 700ms ease-out both; }
+
+/* The one entrance on load: header, left panel and dock arrive 50 ms apart while the map fades in.
+   Keyframes, not script-driven springs: these run off the main thread, so they do not slow the
+   first horizon trace (a slow start makes the map settle for a coarser field). */
+@keyframes enter-top { from { opacity: 0; transform: translateY(-14px); } }
+@keyframes enter-left { from { opacity: 0; transform: translateX(-18px); } }
+@keyframes enter-bottom { from { opacity: 0; transform: translateY(18px); } }
+.enter {
+  animation-duration: 520ms;
+  animation-timing-function: cubic-bezier(0.2, 0.9, 0.25, 1);
+  animation-fill-mode: backwards;
+  animation-delay: calc(100ms + var(--enter-order, 0) * 50ms);
+}
+.enter-top { animation-name: enter-top; }
+.enter-left { animation-name: enter-left; }
+.enter-bottom { animation-name: enter-bottom; }
+
+.top > *, .left > *, .right > *, .bottom > *, .stage > * { pointer-events: auto; }
+
+/* ---------- header ---------- */
+.top-side { display: flex; min-width: 0; }
+.top-side.justify-end { justify-content: flex-end; }
+.top-centre { min-width: 0; }
+.top .tag { display: none; max-width: 206px; text-wrap: balance; }
+.find-label, .find-kbd { display: none; }
+
+/* ---------- layer dock ---------- */
+.layers { position: relative; min-width: 0; }
+.dock {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  height: 46px;
+  padding: 4px;
+  border-radius: 999px;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.layer {
+  --hue: var(--both);
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  color: var(--dust-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  font-stretch: 88%;
+  white-space: nowrap;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+.layer.hue-sun { --hue: var(--sun); }
+.layer.hue-earth { --hue: var(--earth); }
+.layer:hover { color: var(--dust-1); }
+.layer:not(.on):hover { background: var(--raised); }
+.layer.on { color: var(--dust-1); }
+.layer-icon { position: relative; width: 14px; height: 14px; flex: none; }
+.layer.on .layer-icon { color: var(--hue); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--hue) 70%, transparent)); }
+.layer-short { position: relative; }
+/* the active background: slides between pills (Motion layoutId) */
+.layer-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hue) 16%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--hue) 34%, transparent),
+    0 0 20px color-mix(in srgb, var(--hue) 22%, transparent);
+}
+
+/* over the top of the free map: the legend chip, then the map note */
+.stage > .dock-stack {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.dock-stack > * { pointer-events: auto; }
+.legend-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px 16px;
+  max-width: 100%;
+  padding: 7px 14px;
+  border-radius: 16px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--dust-2);
+  pointer-events: auto;
+  --hue: var(--both);
+}
+.legend-chip.hue-sun { --hue: var(--sun); }
+.legend-chip.hue-earth { --hue: var(--earth); }
+.legend-chip .explain { min-width: 0; text-wrap: balance; }
+.legend-chip .legend { display: flex; flex: none; align-items: center; gap: 7px; color: var(--dust-1); font-size: 12px; white-space: nowrap; }
+.legend-chip .bar {
+  width: 84px;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #050505, var(--hue));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* ---------- left panel ---------- */
+.left-panel { display: flex; flex-direction: column; min-height: 0; border-radius: var(--radius-panel); overflow: hidden; }
+.collapsed-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 12px 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dust-1);
+}
+
+/* ---------- site panel and timeline dock ---------- */
+.site-panel { border-radius: var(--radius-panel); overflow: hidden; min-height: 0; }
+.timeline-dock { border-radius: var(--radius-panel); overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+.timeline-body { min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.16) transparent; }
+
+/* ---------- 1100 px and wider: everything floats over the fixed map ----------
+   The left panel runs the full height. The timeline dock sits to its right, so the brief is not
+   squeezed by the dock on a 900 px screen; when the panel is collapsed the dock takes the full width. */
+@media (min-width: 1100px) {
+  html, body, #root { overflow: hidden; }
+  .app {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    padding: var(--margin);
+    row-gap: 12px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: 46px minmax(0, 1fr) auto;
+    pointer-events: none;
+  }
+  .app > .map { position: fixed; inset: 0; z-index: 0; pointer-events: auto; }
+
+  /* The sides take the same width while there is room, so the dock is centred; when there is not,
+     each side keeps its own width and the dock gets the rest (and scrolls if it must). */
+  .top {
+    grid-column: 1 / -1; grid-row: 1; z-index: 20; min-width: 0; pointer-events: none;
+    display: grid; grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr); align-items: start; column-gap: 12px;
+  }
+  /* centred on the map that shows between the panels, 8 px under the header */
+  /* Under the dock while a 700 px stack fits there, otherwise centred on the free map. */
+  .stage > .dock-stack {
+    top: -4px;
+    left: clamp(min(350px, 50%), calc(50vw - var(--inset-left, 0px)), max(calc(100% - 350px), 50%));
+    width: max-content;
+    max-width: min(700px, 100%);
+    transform: translateX(-50%);
+  }
+
+  .left { grid-column: 1; grid-row: 2 / 4; z-index: 10; display: flex; align-items: flex-start; min-height: 0; pointer-events: none; }
+  .left[data-collapsed='true'] { grid-row: 2; }
+  .left-panel { width: 340px; max-height: 100%; margin-right: 12px; }
+  /* the panel is as tall as its content, up to the column; then the content scrolls */
+  .left-panel > [data-slot='tabs'] { flex: 0 1 auto; min-height: 0; }
+  .left-scroll, .site-scroll { display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; }
+  .left-scroll > [data-slot='scroll-area-viewport'], .site-scroll > [data-slot='scroll-area-viewport'] { flex: 0 1 auto; min-height: 0; height: auto; }
+
+  /* the site sheet runs the full height, like the left panel; the dock ends where the sheet begins */
+  .right { grid-column: 3; grid-row: 2 / 4; z-index: 10; display: flex; align-items: flex-start; min-height: 0; pointer-events: none; }
+  .site-panel { display: flex; flex-direction: column; width: 380px; max-height: 100%; margin-left: 12px; }
+
+  .stage { grid-column: 2; grid-row: 2; position: relative; z-index: 5; min-width: 0; pointer-events: none; }
+  /* bottom right of the free map; the scale has the bottom left */
+  .status-pill { position: absolute; right: 0; bottom: 0; max-width: calc(100% - 190px); border-radius: 15px; }
+
+  .bottom { grid-column: 2 / -1; grid-row: 3; z-index: 10; min-width: 0; pointer-events: none; }
+  .app:has(.left[data-collapsed='true']) .bottom { grid-column: 1 / -1; }
+  .app:has(.site-panel) .bottom { grid-column: 2; }
+  .app:has(.site-panel):has(.left[data-collapsed='true']) .bottom { grid-column: 1 / 3; }
+  .timeline-dock { max-height: 46vh; }
+}
+/* Between 1100 and 1400 px there is no room for a dock between the two panels: while a site is
+   open the left panel stops above the dock, and the dock runs from the left edge to the sheet. */
+@media (min-width: 1100px) and (max-width: 1399.98px) {
+  .app:has(.site-panel) .left { grid-row: 2; }
+  .app:has(.site-panel) .bottom { grid-column: 1 / 3; }
+}
+/* the dock keeps its labels down to 1280 px by setting them tighter */
+@media (max-width: 1499.98px) {
+  .layer { gap: 4px; padding: 0 8px 0 7px; font-size: 12px; font-stretch: 82%; }
+  .layer-icon { width: 13px; height: 13px; }
+}
+/* under 1280 px only the active layer keeps its icon, so all nine names still fit */
+@media (min-width: 1100px) and (max-width: 1279.98px) {
+  .layer:not(.on) .layer-icon { display: none; }
+  .layer:not(.on) { padding: 0 8px; }
+}
+@media (min-width: 1500px) {
+  .find-label { display: inline; }
+}
+@media (min-width: 1100px) {
+  .find-kbd { display: inline; }
+}
+/* the tagline needs the room the dock leaves, which is from about 1720 px */
+@media (min-width: 1720px) {
+  .top .tag { display: block; }
+}
+
+/* ---------- under 1100 px: the map on top, the panels stacked below it ---------- */
+@media (max-width: 1099.98px) {
+  html, body, #root { height: auto; min-height: 100%; }
+  .app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'top' 'map' 'bottom' 'right' 'left';
+    gap: 10px;
+    padding-bottom: 28px;
+    overflow-x: clip;
+  }
+  .app > .map { grid-area: map; height: 58vh; height: 58svh; }
+  .glass { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(22, 22, 25, 0.96); box-shadow: var(--glass-highlight); }
+
+  .top { grid-area: top; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 10px 10px 0; min-width: 0; }
+  .top-side { flex: 0 1 auto; }
+  .top-centre { order: 3; flex: 1 1 100%; }
+  .dock { width: fit-content; margin: 0 auto; }
+  .stage > .dock-stack { top: 8px; left: 8px; right: 8px; }
+  .legend-chip { flex-wrap: wrap; }
+  .dock-stack .map-note { border-radius: 16px; }
+
+  .stage { grid-area: map; position: relative; z-index: 5; pointer-events: none; display: flex; align-items: flex-end; justify-content: flex-end; padding: 8px; min-width: 0; }
+
+  .left, .right, .bottom { padding: 0 10px; min-width: 0; }
+  .left { grid-area: left; }
+  .right { grid-area: right; }
+  .right:empty { display: none; }
+  .bottom { grid-area: bottom; }
+  /* no collapsing when nothing overlaps the map */
+  .left-panel { display: flex !important; opacity: 1 !important; transform: none !important; }
+  .collapse-button, .collapsed-pill { display: none !important; }
+}
+@media (max-width: 699.98px) {
+  .top-side, .top-side.justify-end { flex: 1 1 100%; justify-content: flex-start; }
+  .top nav { width: 100%; }
+  .top nav .find { margin-right: auto; }
+  .status-pill { border-radius: 14px; }
+}
