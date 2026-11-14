@@ -100,6 +100,7 @@ export function fmtDateTime(ms: number) {
 }
 /** "3 d 4 h", "11 h", "40 min" */
 export function fmtDur(hours: number) {
+  if (hours <= 0) return '0 h'
   if (hours < 1) return `${Math.max(1, Math.round(hours * 60))} min`
   const h = Math.round(hours)
   return h >= 48 ? `${Math.floor(h / 24)} d ${h % 24} h` : `${h} h`
