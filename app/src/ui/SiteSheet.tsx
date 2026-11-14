@@ -15,6 +15,7 @@ interface Props {
   horizon: Horizon | null
   series: SiteSeries | null
   summary: SiteSummary | null // the stay, from landing to its end
+  psrM: number | null         // metres to permanent shadow, when the site is in view and it is known
   now: number
   brief: Brief
   epochMs: number
@@ -56,6 +57,7 @@ export function SiteSheet(p: Props) {
     if (sum.longestDarkH > b.needs.maxDarkH) fails.push(`the longest dark stretch is ${fmtDur(sum.longestDarkH)} and the brief allows ${fmtDur(b.needs.maxDarkH)}`)
     if (sum.comm < b.needs.minComm) fails.push(`contact is ${fmtPct(sum.comm)} and the brief asks for ${fmtPct(b.needs.minComm)}`)
     if (b.needs.powerLasts && !sum.survives) fails.push(`the battery is empty ${fmtDur(sum.hoursAlive)} after landing`)
+    if (b.needs.psrKm > 0 && p.psrM !== null && p.psrM > b.needs.psrKm * 1000) fails.push(`permanent shadow is ${(p.psrM / 1000).toFixed(1)} km away and the brief asks for ${b.needs.psrKm} km`)
   }
 
   return (
@@ -91,6 +93,7 @@ export function SiteSheet(p: Props) {
             <div><dt>Contact</dt><dd>{fmtPct(sum.comm)}</dd></div>
             <div><dt>Longest silence</dt><dd>{fmtDur(sum.longestSilenceH)}</dd></div>
             <div><dt>Power</dt><dd>{sum.survives ? `lasts, lowest ${Math.round(sum.minBatteryWh)} Wh` : `out after ${fmtDur(sum.hoursAlive)}`}</dd></div>
+            {p.psrM !== null && <div><dt>Nearest permanent shadow</dt><dd>{p.psrM <= 0 ? 'the site is in it' : p.psrM < 1000 ? `${Math.round(p.psrM / 10) * 10} m` : `${(p.psrM / 1000).toFixed(1)} km`}</dd></div>}
           </dl>
           <p className={`verdict${fails.length ? ' fail' : ''}`}>
             {fails.length ? `Does not meet the brief: ${fails.join('; ')}.` : 'Meets the brief.'}

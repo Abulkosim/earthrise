@@ -7,6 +7,7 @@ export interface Needs {
   maxDarkH: number    // longest allowed stretch without Sun, hours
   minComm: number     // share of the stay with Earth contact, 0..1
   powerLasts: boolean // the battery must not run out during the stay
+  psrKm: number       // science: permanent shadow within this many km of the landing point; 0 = not asked
 }
 
 export interface Brief {
@@ -20,7 +21,7 @@ export interface Brief {
 export const LANDING_MIN_MS = Date.UTC(2023, 1, 1)
 export const LANDING_MAX_MS = Date.UTC(2044, 8, 1)
 
-export const DEFAULT_NEEDS: Needs = { minLit: 0.5, maxDarkH: 72, minComm: 0.3, powerLasts: true }
+export const DEFAULT_NEEDS: Needs = { minLit: 0.5, maxDarkH: 72, minComm: 0.3, powerLasts: true, psrKm: 0 }
 
 export function defaultBrief(epochMs: number): Brief {
   return {
@@ -31,7 +32,7 @@ export function defaultBrief(epochMs: number): Brief {
   }
 }
 
-export type LayerId = 'now' | 'lit' | 'longestDark' | 'comm' | 'longestCommGap' | 'hoursAlive' | 'needs'
+export type LayerId = 'now' | 'lit' | 'longestDark' | 'comm' | 'longestCommGap' | 'hoursAlive' | 'needs' | 'climate' | 'psr'
 
 export interface Layer {
   id: LayerId
@@ -39,6 +40,8 @@ export interface Layer {
   explain: string
   hue: 'sun' | 'earth' | 'both'
   metric?: Metric
+  /** which evaluation the layer reads: 0 the stay (default), 2 the 18.6-year run */
+  slot?: number
   /** values drawn darkest and brightest */
   range?: (b: Brief) => [number, number]
   legend?: (b: Brief) => [string, string]
@@ -65,6 +68,12 @@ export const LAYERS: Layer[] = [
   { id: 'hoursAlive', label: 'How long the power lasts', hue: 'both', metric: 'hoursAlive',
     explain: 'Hours from landing until the battery is empty, with the array and loads in the brief.',
     range: (b) => [0, b.stayDays * 24], legend: (b) => ['dies at landing', `lasts ${b.stayDays} d`] },
+  { id: 'climate', label: 'Sunlight over 18.6 years', hue: 'sun', metric: 'lit', slot: 2,
+    explain: 'Average share of the Sun in view over one full cycle of the Moon’s orbit, 2023 to 2041. Black ground never sees the Sun.',
+    range: () => [0, 1], legend: () => ['never', 'always'] },
+  { id: 'psr', label: 'Distance to permanent shadow', hue: 'both', metric: 'psrDistance', slot: 2,
+    explain: 'Ground that never sees the Sun can hold ice. Brighter ground is closer to it; the shadow itself is black.',
+    range: () => [6000, 0], legend: () => ['6 km or more', 'at the edge'] },
 ]
 
 export const HUES: Record<Layer['hue'], [number, number, number]> = {

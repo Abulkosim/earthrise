@@ -64,6 +64,11 @@ export function Brief(p: { brief: BriefT; epochMs: number; onChange(b: BriefT): 
         the time{' '}
         <label className="check"><input type="checkbox" checked={n.powerLasts} onChange={(e) => setN('powerLasts', e.target.checked)} /> and a battery that never runs empty</label>.
       </p>
+      <p>
+        <label className="check"><input type="checkbox" checked={n.psrKm > 0} onChange={(e) => setN('psrKm', e.target.checked ? 2 : 0)} /> The science team wants ground that never sees the Sun, where ice can last,</label>{' '}
+        within <Num label="Largest distance to permanent shadow, kilometres" value={n.psrKm > 0 ? n.psrKm : 2} min={0.1} max={50} step={0.5} unit="km" onChange={(v) => setN('psrKm', v)} /> of
+        the landing point.
+      </p>
     </section>
   )
 }
