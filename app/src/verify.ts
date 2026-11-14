@@ -10,7 +10,7 @@ const lines: string[] = []
 const log = (s: string) => { lines.push(s); out.textContent = lines.join('\n'); console.log('[verify] ' + s) }
 const q = new URLSearchParams(location.search)
 const num = (k: string) => (q.get(k) === null ? undefined : Number(q.get(k)))
-const setResult = (v: unknown) => { (window as unknown as { __verify: unknown }).__verify = v }
+const setResult = (v: unknown) => { (window as unknown as { __verify: unknown }).__verify = v; report(v) }
 
 // Our 18.6-year average visibility against NASA Goddard's published maps (Mazarico et al. 2011 method).
 async function goddard(eng: Engine) {
@@ -62,5 +62,18 @@ async function barker(eng: Engine) {
   log(`focus ${eng.data.hasLevel('t5') ? '5 m tiles' : '20 m tiles'}; ${(r.ms / 1000).toFixed(0)} s`)
   setResult({ done: true, barker: r.rows })
   log('DONE')
+}
+
+// ?report=<url>: POST the outcome there when done, so a browser that cannot be scripted (Safari)
+// can still be checked. The listener only needs to log request bodies.
+function report(payload: unknown) {
+  const url = q.get('report')
+  if (!url) return
+  const gl = document.createElement('canvas').getContext('webgl2')
+  const dbg = gl?.getExtension('WEBGL_debug_renderer_info')
+  void fetch(url, {
+    method: 'POST', mode: 'no-cors',
+    body: JSON.stringify({ ua: navigator.userAgent, renderer: gl ? gl.getParameter(dbg ? dbg.UNMASKED_RENDERER_WEBGL : gl.RENDERER) : 'no webgl2', lines: lines.slice(-8), payload }),
+  })
 }
 main().catch((e) => { log('ERROR ' + explain(e) + '\n' + (e?.stack ?? '')); setResult({ done: true, error: String(e) }) })

@@ -51,6 +51,11 @@ export function MapView(p: Props) {
   live.current = p
   const dirty = useRef(false)
   const moving = useRef(0)
+  const ticking = useRef(0)      // when the time last changed: tells playback and scrubbing from rest
+  const lastCoarse = useRef(0)
+  const gpuBusy = useRef(false)
+  const again = useRef(false)
+  const requestFrameRef = useRef<() => void>(() => {})
   const settleTimer = useRef(0)
   const settleId = useRef(0)
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -63,8 +68,31 @@ export function MapView(p: Props) {
     e.setView(q.view.cx, q.view.cy, q.view.mpp / dpr)
     const layer = LAYERS.find((l) => l.id === q.layer)!
     if (layer.id === 'now' || !e.metricRect || (layer.slot === 2 && !e.psrDist)) {
-      const busy = performance.now() - moving.current < 160
-      e.renderNow(q.now, q.brief.mission.mast, busy ? 0.4 : 0.8)
+      // Walking the terrain for every screen pixel is the costly way to get this picture. It is done
+      // once the view and the time are at rest. While time runs, the light comes from the cached
+      // horizons (one lookup per pixel). While the map moves, the last picture is reused and only
+      // refreshed coarsely a few times a second. And nothing new is issued before the GPU is done
+      // with the last frame, or the whole machine starts to stutter.
+      const t = performance.now(), mast = q.brief.mission.mast
+      const isMoving = t - moving.current < 200, isPlaying = t - ticking.current < 250
+      if (gpuBusy.current) { again.current = true }
+      else {
+        let heavy = false
+        if (isMoving) {
+          if (t - lastCoarse.current > 180) { e.renderNow(q.now, mast, 0.25); lastCoarse.current = t; heavy = true }
+        } else if (isPlaying) {
+          if (!e.renderNowFast(q.now, mast)) { e.renderNow(q.now, mast, 0.25); heavy = true }
+        } else {
+          // at rest: sharp, but never more than about 1.6 million walked pixels
+          const c = canvas.current
+          e.renderNow(q.now, mast, Math.min(1, Math.sqrt(1.6e6 / (c.width * c.height))))
+          heavy = true
+        }
+        if (heavy) {
+          gpuBusy.current = true
+          void e.idle().then(() => { gpuBusy.current = false; if (again.current) { again.current = false; requestFrameRef.current() } })
+        }
+      }
       e.draw({ mode: 'now', hours: q.now })
     } else {
       // the long-run layers show their own numbers; the brief's needs dim only the stay layers
@@ -80,6 +108,7 @@ export function MapView(p: Props) {
     dirty.current = true
     requestAnimationFrame(frame)
   }, [frame])
+  requestFrameRef.current = requestFrame
 
   const status = useCallback((phase: MapStatus['phase'], progress = 0) => {
     const e = eng.current
@@ -197,10 +226,11 @@ export function MapView(p: Props) {
 
   const { cx, cy, mpp } = p.view
   useEffect(() => { moving.current = performance.now(); requestFrame(); scheduleSettle() }, [cx, cy, mpp, requestFrame, scheduleSettle])
+  useEffect(() => { ticking.current = performance.now() }, [p.now])
   useEffect(() => {
     requestFrame()
-    // a second pass at full sharpness once scrubbing stops
-    const t = window.setTimeout(requestFrame, 220)
+    // a second pass at full sharpness once playback or scrubbing stops
+    const t = window.setTimeout(requestFrame, 300)
     return () => window.clearTimeout(t)
   }, [p.now, p.layer, requestFrame])
   useEffect(() => { requestFrame(); if (eng.current?.metricRect) { status('idle', 1); void sweep() } }, [p.brief.needs, p.span.t0, requestFrame, status, sweep])
