@@ -1,67 +1,790 @@
 /* Written with AI assistance (Claude); see the README. */
-/* The validation page: one readable column of text, tables and two map canvases. */
+/*
+  The validation page. Same tokens as the map (index.css): dust for text, gold only for the Sun,
+  blue only for the Earth. A slim glass header, a hero over a lit lunar horizon, then one glass
+  card per check in a readable column. The cards rest on the horizon line, so the first one
+  frosts it. On wide screens a contents rail follows the section in view.
+*/
 
-html, body, #root { height: auto; min-height: 100%; }
-
-body { font-size: var(--t-md); line-height: 1.6; }
-
-.vpage { max-width: 72ch; margin: 0 auto; padding: var(--gap-5) var(--gap-4) 96px; }
-
-.vpage nav { margin-bottom: 40px; font-size: var(--t-sm); }
-.vpage a { color: var(--dust-1); text-decoration: underline; text-decoration-color: var(--ground-3); text-underline-offset: 3px; }
-.vpage a:hover { text-decoration-color: var(--dust-2); }
-
-.vpage h1 { font-size: var(--t-xl); font-weight: 600; line-height: 1.2; margin: 0 0 var(--gap-4); }
-.vpage h2 { font-size: var(--t-lg); font-weight: 600; margin: 56px 0 var(--gap-3); padding-top: var(--gap-4); border-top: var(--rule); }
-.vpage h3 { font-size: var(--t-md); font-weight: 600; margin: 32px 0 var(--gap-2); }
-.vpage p, .vpage ul { margin: 0 0 var(--gap-3); }
-.vpage ul { padding-left: 1.2em; }
-.vpage li { margin-bottom: var(--gap-1); }
-.vpage .lede { color: var(--dust-1); font-size: var(--t-lg); line-height: 1.5; }
-.vpage .note { color: var(--dust-2); }
-.vpage .muted { color: var(--dust-3); }
-
-.vpage .sun { color: var(--sun); }
-.vpage .earth { color: var(--earth); }
-
-/* tables */
-.vtable { overflow-x: auto; margin: var(--gap-3) 0 var(--gap-4); }
-.vpage table { border-collapse: collapse; width: 100%; font-size: var(--t-sm); }
-.vpage th, .vpage td { padding: 5px var(--gap-3) 5px 0; border-bottom: var(--rule); text-align: right; white-space: nowrap; vertical-align: baseline; }
-.vpage th:first-child, .vpage td:first-child { text-align: left; white-space: normal; }
-.vpage th { color: var(--dust-2); font-weight: 500; }
-.vpage td.left, .vpage th.left { text-align: left; }
-.vpage thead tr + tr th:first-child { text-align: right; }
-.vpage th[colspan] { text-align: center; }
-.vpage caption { caption-side: bottom; text-align: left; color: var(--dust-3); font-size: var(--t-xs); padding-top: var(--gap-2); }
-
-/* live checks */
-.vrun { margin: var(--gap-4) 0; }
-.vpage button {
-  background: var(--ground-2); border: var(--rule); border-radius: var(--radius);
-  padding: 7px 14px; cursor: pointer; font-size: var(--t-sm);
+html,
+body,
+#root {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
 }
-.vpage button:hover:not(:disabled) { border-color: var(--dust-3); }
-.vpage button:disabled { color: var(--dust-3); cursor: default; }
-.vstatus { margin-top: var(--gap-2); color: var(--dust-2); font-size: var(--t-sm); min-height: 1.6em; }
-.vstatus.error { color: var(--dust-1); border-left: 2px solid var(--dust-1); padding-left: var(--gap-3); }
-.vbar { height: 2px; background: var(--ground-2); margin-top: var(--gap-2); }
-.vbar > div { height: 100%; width: 0; background: var(--dust-2); }
-.vsummary { margin-top: var(--gap-3); }
-
-.vmaps { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap-4); margin: var(--gap-4) 0; }
-.vmaps figure { margin: 0; }
-.vmaps canvas { display: block; width: 100%; aspect-ratio: 1; background: var(--ground-1); image-rendering: pixelated; }
-.vmaps figcaption { color: var(--dust-2); font-size: var(--t-sm); margin-top: var(--gap-2); }
-
-.vpage pre {
-  font-family: var(--font-ui); font-size: var(--t-sm); line-height: 1.7;
-  background: var(--ground-1); border-left: 2px solid var(--ground-3);
-  padding: var(--gap-3) var(--gap-4); overflow-x: auto; white-space: pre;
+html {
+  scroll-padding-top: 76px;
 }
-.vpage code { font-family: var(--font-ui); color: var(--dust-1); }
+body {
+  font-size: 16px;
+  line-height: 1.6;
+}
 
+/* ---- header ---- */
+.vheader {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(8, 8, 10, 0.72);
+  border-bottom: 1px solid var(--hairline);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
+}
+.vheader-in {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 56px;
+  max-width: 1312px;
+  margin: 0 auto;
+  padding: 0 34px;
+}
+.vmark {
+  font-size: 23px;
+  line-height: 1;
+  color: var(--dust-1);
+  text-decoration: none;
+  border-radius: 6px;
+}
+.vheader-title {
+  font-size: 13.5px;
+  color: var(--dust-2);
+  padding-left: 18px;
+  border-left: 1px solid var(--glass-border);
+  line-height: 20px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+}
+.past-hero .vheader-title {
+  opacity: 1;
+  transform: none;
+}
+.vback {
+  margin-left: auto;
+}
+
+/* ---- buttons (the shadcn Button look, in plain CSS) ---- */
+.vbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px 0 14px;
+  border: 0;
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 560;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    transform 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
+}
+.vbtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.vbtn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.vbtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.vbtn[aria-busy='true'] {
+  opacity: 1;
+}
+.vbtn-primary {
+  background: var(--dust-1);
+  color: #0d0d0e;
+  box-shadow:
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    0 8px 24px -10px rgba(242, 238, 230, 0.45);
+}
+.vbtn-primary:hover:not(:disabled) {
+  background: #fff;
+  box-shadow:
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    0 10px 28px -10px rgba(242, 238, 230, 0.6);
+}
+.vbtn-ghost {
+  height: 36px;
+  padding: 0 14px 0 11px;
+  background: var(--raised);
+  color: var(--dust-1);
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+}
+.vbtn-ghost:hover:not(:disabled) {
+  background: var(--raised-hover);
+}
+.vbtn-sm {
+  height: 30px;
+  padding: 0 11px 0 9px;
+  gap: 6px;
+  font-size: 12.5px;
+  border-radius: 9px;
+}
+.vicon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+.vicon svg {
+  width: 100%;
+  height: 100%;
+}
+.vbtn-icon {
+  width: 16px;
+  height: 16px;
+}
+.vbtn-sm .vbtn-icon {
+  width: 13px;
+  height: 13px;
+}
+.vbtn-primary .vbtn-icon:not(.vspin) svg {
+  fill: currentColor;
+}
+.vspin svg {
+  animation: ring-turn 0.9s linear infinite;
+}
+
+/* ---- hero over the lunar horizon ---- */
+.vtop {
+  position: relative;
+  overflow: hidden;
+  padding: 92px 24px 200px;
+}
+.vhero {
+  position: relative;
+  max-width: 760px;
+  margin: 0 auto;
+}
+.vhero h1 {
+  margin: 0 0 26px;
+  font-size: 52px;
+  line-height: 1.04;
+  font-weight: 640;
+  font-stretch: 90%;
+  letter-spacing: -0.025em;
+  color: var(--dust-1);
+  text-wrap: balance;
+}
+.vhero .lede {
+  margin: 0 0 18px;
+  max-width: 64ch;
+  font-size: 19px;
+  line-height: 1.6;
+  color: var(--dust-1);
+  text-wrap: pretty;
+}
+.vhero p:not(.lede) {
+  margin: 0;
+  max-width: 68ch;
+  font-size: 15px;
+  color: var(--dust-2);
+}
+.vlimb {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 240px;
+  pointer-events: none;
+}
+.vlimb svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* the one entrance on the page: the Earth rises a little over the limb */
+.vlimb-earth {
+  animation: earth-rise 2.4s cubic-bezier(0.2, 0.7, 0.1, 1) both;
+}
+@keyframes earth-rise {
+  from {
+    transform: translateY(22px);
+    opacity: 0.3;
+  }
+}
+
+/* ---- the column of cards ---- */
+.vpage {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  max-width: 808px;
+  margin: -24px auto 0;
+  padding: 0 24px 120px;
+}
+.vsection {
+  scroll-margin-top: 76px;
+  padding: 30px 36px 30px;
+  border-radius: var(--radius-panel);
+  background: rgba(20, 20, 23, 0.62);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  backdrop-filter: blur(20px) saturate(1.3);
+}
+.vsection-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.vsection-icon {
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border-radius: 999px;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+  color: var(--dust-2);
+}
+.vsection h2 {
+  margin: 0;
+  font-size: 23px;
+  line-height: 1.25;
+  font-weight: 620;
+  letter-spacing: -0.012em;
+  color: var(--dust-1);
+}
+.vsection h3 {
+  margin: 30px 0 10px;
+  padding-top: 26px;
+  border-top: 1px solid var(--hairline);
+  font-size: 16px;
+  font-weight: 620;
+  color: var(--dust-1);
+}
+.vsection p {
+  margin: 0 0 14px;
+  max-width: 68ch;
+  color: var(--dust-1);
+  text-wrap: pretty;
+}
+.vsection p:last-child {
+  margin-bottom: 0;
+}
+.vpage .note {
+  color: var(--dust-2);
+}
+.vpage .muted {
+  color: var(--dust-3);
+  font-size: 14px;
+}
+.vpage strong {
+  font-weight: 620;
+}
+.vpage a {
+  color: var(--dust-1);
+  text-decoration: underline;
+  text-decoration-color: rgba(242, 238, 230, 0.3);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  border-radius: 3px;
+  transition: text-decoration-color 140ms ease;
+}
+.vpage a:hover {
+  text-decoration-color: var(--dust-1);
+}
+.vpage .sun {
+  color: var(--sun);
+}
+.vpage .earth {
+  color: var(--earth);
+}
+/* a result in a sentence: our run, or yours */
+.vsection p.vresult {
+  max-width: none;
+  padding: 13px 16px;
+  border-radius: 14px;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+/* ---- tables ---- */
+.vtable {
+  margin: 18px 0 20px;
+}
+.vtable-scroll {
+  overflow-x: auto;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.vpage table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.vpage th,
+.vpage td {
+  padding: 10px 16px;
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+.vpage th {
+  font-size: 12.5px;
+  font-weight: 520;
+  color: var(--dust-2);
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--hairline);
+}
+.vpage thead tr + tr th {
+  padding-top: 0;
+  color: var(--dust-3);
+}
+.vpage thead tr:first-child th[rowspan] {
+  vertical-align: bottom;
+}
+.vpage thead tr:not(:last-child) th:not([rowspan]) {
+  border-bottom: 0;
+}
+.vpage th[colspan] {
+  text-align: center;
+}
+.vpage th:first-child,
+.vpage td:first-child,
+.vpage .left {
+  text-align: left;
+}
+.vpage thead tr + tr th:first-child {
+  text-align: right;
+}
+.vpage td:first-child {
+  white-space: normal;
+  min-width: 9em;
+}
+.vpage td {
+  color: var(--dust-1);
+  border-top: 1px solid var(--hairline);
+}
+.vpage tbody tr:first-child td {
+  border-top: 0;
+}
+.vpage tbody tr {
+  transition: background-color 140ms ease;
+}
+.vpage tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.vpage td.tone-sun {
+  color: var(--sun);
+}
+.vpage td.tone-earth {
+  color: var(--earth);
+}
+.vpage td .place {
+  font-size: 15px;
+}
+/* a dot before a Sun or Earth label in a table */
+.vtable .sun::before,
+.vtable .earth::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 7px 1px 0;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.vtable .sun::before {
+  background: var(--sun);
+  box-shadow: 0 0 8px rgba(245, 201, 106, 0.6);
+}
+.vtable .earth::before {
+  background: var(--earth);
+  box-shadow: 0 0 8px rgba(125, 184, 240, 0.6);
+}
+/* the rows your browser fills in */
+.vpage tr.vyours {
+  background: rgba(255, 255, 255, 0.035);
+}
+.vpage tr.vyours td:empty::after {
+  content: '–';
+  color: var(--dust-3);
+}
+.vcaption {
+  margin: 10px 2px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dust-3);
+}
+.vsection .vcaption {
+  color: var(--dust-3);
+  max-width: none;
+}
+
+/* ---- live checks ---- */
+.vrun {
+  margin: 22px 0 8px;
+  padding: 18px 20px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+  transition: box-shadow 200ms ease;
+}
+.vrun[data-state='error'] {
+  box-shadow: inset 0 0 0 1px rgba(240, 112, 92, 0.5);
+}
+.vsection p.vrun-about {
+  margin: 0 0 16px;
+  font-size: 14.5px;
+  color: var(--dust-2);
+}
+.vrun-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.vrun-pct {
+  margin-left: auto;
+  font-size: 20px;
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+  color: var(--dust-1);
+}
+.vprogress {
+  position: relative;
+  height: 4px;
+  margin-top: 16px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+.vprogress-fill {
+  position: relative;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--dust-1);
+  box-shadow: 0 0 12px rgba(242, 238, 230, 0.45);
+  transition: width 320ms ease;
+  overflow: hidden;
+}
+.vrun[data-state='running'] .vprogress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+  transform: translateX(-100%);
+  animation: vshimmer 1.4s ease-in-out infinite;
+}
+@keyframes vshimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+.vstatus {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 1.5em;
+  margin-top: 10px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--dust-2);
+}
+.vstatus-icon:empty {
+  display: none;
+}
+.vstatus-icon .vicon {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--dust-1);
+}
+.vstatus.error {
+  color: var(--dust-1);
+}
+.vstatus.error .vstatus-icon .vicon {
+  color: var(--fail);
+}
+.vsummary {
+  margin-top: 4px;
+}
+
+/* things a run reveals or fills in */
+.vreveal:not([hidden]) {
+  animation: vreveal 420ms cubic-bezier(0.2, 0.7, 0.1, 1) both;
+}
+@keyframes vreveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+}
+.vpage .vfresh {
+  animation: vfresh 1.6s ease-out;
+}
+@keyframes vfresh {
+  from {
+    background-color: rgba(242, 238, 230, 0.12);
+  }
+}
+
+/* ---- the two Goddard maps ---- */
+.vmaps {
+  margin: 22px 0 0;
+}
+.vmaps-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.vmaps figure {
+  margin: 0;
+}
+.vframe {
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--ground-1);
+  box-shadow:
+    inset 0 0 0 1px var(--glass-border),
+    0 18px 40px -16px rgba(0, 0, 0, 0.8);
+}
+.vframe canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+}
+.vmaps figcaption {
+  margin-top: 10px;
+  font-size: 13.5px;
+  color: var(--dust-2);
+}
+.vramp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0 12px;
+  font-size: 12.5px;
+  color: var(--dust-3);
+}
+.vramp {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #000, var(--sun-dim) 55%, var(--sun));
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+}
+
+/* ---- lists ---- */
+.vlist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vlist li {
+  position: relative;
+  padding: 13px 0 13px 22px;
+  border-top: 1px solid var(--hairline);
+  color: var(--dust-1);
+  text-wrap: pretty;
+}
+.vlist li:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+.vlist li::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: calc(13px + 0.8em - 3px);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--dust-3);
+}
+.vlist li:first-child::before {
+  top: calc(2px + 0.8em - 3px);
+}
+.vlist-quiet li {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 14.5px;
+  color: var(--dust-2);
+}
+.vlist-quiet li::before {
+  top: calc(10px + 0.8em - 3px);
+  width: 4px;
+  height: 4px;
+  left: 4px;
+}
+
+/* ---- the commands ---- */
+.vcode {
+  position: relative;
+  margin: 16px 0 18px;
+}
+.vcode pre {
+  margin: 0;
+  padding: 18px 20px;
+  overflow-x: auto;
+  border-radius: 14px;
+  background: #0a0a0b;
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.8;
+  white-space: pre;
+  tab-size: 2;
+}
+.vcode code {
+  font-family: inherit;
+  color: var(--dust-1);
+}
+.vcomment {
+  color: var(--dust-3);
+}
+.vcopy {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+}
+
+/* ---- contents rail ---- */
+.vtoc {
+  display: none;
+}
+@media (min-width: 1300px) {
+  .vtoc {
+    position: fixed;
+    top: 96px;
+    left: max(24px, calc(50% - 404px - 252px));
+    z-index: 10;
+    display: grid;
+    gap: 2px;
+    width: 228px;
+    opacity: 0;
+    transform: translateX(-6px);
+    pointer-events: none;
+    transition:
+      opacity 220ms ease,
+      transform 220ms ease;
+  }
+  .past-hero .vtoc {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  .vtoc a {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 7px 12px 7px 10px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    line-height: 1.35;
+    color: var(--dust-3);
+    text-decoration: none;
+    transition:
+      background-color 140ms ease,
+      color 140ms ease;
+  }
+  .vtoc a:hover {
+    color: var(--dust-1);
+    background: var(--raised);
+  }
+  .vtoc a[aria-current] {
+    color: var(--dust-1);
+    background: var(--raised);
+    box-shadow: inset 0 0 0 1px var(--hairline);
+  }
+  .vtoc .vicon {
+    width: 15px;
+    height: 15px;
+    margin-top: 1px;
+  }
+}
+
+/* ---- narrow screens ---- */
+@media (max-width: 700px) {
+  .vheader-in {
+    padding: 0 16px;
+    height: 52px;
+  }
+  .vheader-title {
+    display: none;
+  }
+  .vtop {
+    padding: 44px 16px 124px;
+  }
+  .vlimb {
+    height: 140px;
+  }
+  .vhero h1 {
+    font-size: 38px;
+    margin-bottom: 20px;
+  }
+  .vhero .lede {
+    font-size: 17px;
+  }
+  .vpage {
+    margin-top: -12px;
+    padding: 0 16px 80px;
+    gap: 14px;
+  }
+  .vsection {
+    padding: 22px 18px 22px;
+    border-radius: 18px;
+  }
+  .vsection-head {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .vsection-icon {
+    width: 30px;
+    height: 30px;
+    padding: 7px;
+  }
+  .vsection h2 {
+    font-size: 20px;
+  }
+  .vsection p,
+  .vlist li {
+    font-size: 15px;
+  }
+  .vpage th,
+  .vpage td {
+    padding: 9px 12px;
+  }
+  .vrun {
+    padding: 16px;
+  }
+  /* wrap long commands instead of scrolling them under the copy button */
+  .vcode pre {
+    padding: 50px 16px 16px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .vrun-row .vbtn {
+    flex: 1;
+    height: 44px;
+  }
+  /* the bar shows how far it is; no room for the number beside the button */
+  .vrun-pct {
+    display: none;
+  }
+}
 @media (max-width: 520px) {
-  .vmaps { grid-template-columns: 1fr; }
-  .vpage .lede { font-size: var(--t-md); }
+  .vmaps-grid {
+    grid-template-columns: 1fr;
+  }
 }
