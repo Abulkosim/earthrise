@@ -1,3 +1,4 @@
+# Written with AI assistance (Claude); see the README.
 """Turn the NASA source files into what the browser engine loads.
 
 Output (default app/public/data, not committed):
@@ -23,6 +24,7 @@ from earthrise_ref import DATA_DIR, R_MOON, ephem
 OUT = Path(__file__).resolve().parents[2] / "app" / "public" / "data"
 TILE = 512
 T20_LAT = -84.0  # 20 m tiles are written poleward of this latitude
+CROP = 1024  # validation crop of the Goddard maps: 61 km at 60 m, centred on the pole
 
 
 def pack(a):
@@ -127,6 +129,13 @@ def build_validation():
         out[key] = {"file": f"validation/avgvisib_{key}.bin.gz", "n": 5058, "res": 60.0, "scale": 0.00004,
                     "source": src.upper(), "bytes": len(b)}
         print(f"validation {key}: {len(b) / 1e6:.1f} MB")
+        # crops: the central CROP x CROP pixels, centred on the pole, for the check on the public page
+        o = (5058 - CROP) // 2
+        b = pack(a[o:o + CROP, o:o + CROP])
+        (d / f"avgvisib_{key}_crop.bin.gz").write_bytes(b)
+        out[f"{key}_crop"] = {"file": f"validation/avgvisib_{key}_crop.bin.gz", "n": CROP, "res": 60.0, "scale": 0.00004,
+                              "offset": o, "source": f"{src.upper()} rows and columns {o} to {o + CROP - 1}", "bytes": len(b)}
+        print(f"validation {key} crop: {CROP} px, {len(b) / 1e6:.1f} MB")
     return out
 
 
