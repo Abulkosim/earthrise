@@ -125,7 +125,8 @@ function Main({ data }: { data: DataStore }) {
   const [layer, setLayer] = useState<LayerId>(shared.layer ?? 'now')
   const [selected, setSelected] = useState<Site | null>(shared.selected ?? null)
   const [compared, setCompared] = useState<Site[]>(() => shared.compared ??
-    ['connecting ridge', 'malapert', 'mons mouton plateau'].map((q) => SITES.find((s) => s.name.toLowerCase().includes(q))).filter((s): s is Site => !!s).slice(0, 3))
+    // one site that meets the default brief (a 5 m region on the connecting ridge) and two candidate regions that do not
+    ['barker-site1-roi4', 'a3-malapert-massif', 'a3-mons-mouton-plateau'].map((id) => SITES.find((s) => s.id === id)).filter((s): s is Site => !!s))
   const [status, setStatus] = useState<MapStatus>({ phase: 'loading', progress: 0, bakeMs: 0, evalMs: 0, pixels: 0, pass: null })
   const [playing, setPlaying] = useState(false)
   const [engine, setEngine] = useState<Engine | null>(null)
@@ -240,7 +241,7 @@ function Main({ data }: { data: DataStore }) {
   const showSlip = () => { stopShows(); setLayer('needs'); setSlipping(true) }
   const showRidge = () => {
     stopShows()
-    const s = SITES.find((t) => t.name.toLowerCase().includes('connecting ridge'))
+    const s = SITES.find((t) => t.id === 'barker-site1-roi4') ?? SITES.find((t) => t.name.toLowerCase().includes('connecting ridge'))
     if (s) goTo(s)
     setLayer('now'); setSpeed(8); setNow(brief.landing); setPlaying(true)
   }

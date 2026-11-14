@@ -389,7 +389,7 @@
   "lon": 222.69,
   "kind": "candidate",
   "agency": "NASA",
-  "note": "Most illuminated point in the LOLA maps: lit 89.0% of the time at the surface, 93.1% at 10 m (site 1).",
+  "note": "Most illuminated point in the LOLA maps: lit 89.0% of the time at the surface, 93.1% at 10 m (site 1). The coordinate comes from a 240 m map (Mazarico et al. 2011); on the 5 m map the best-lit ground is nearby, not exactly here.",
   "source": "https://trek.nasa.gov/moon/trekarcgis2/rest/services/LRO_LOLA_MaxIlluminationSites_asl_SP/MapServer/0"
  },
  {
@@ -429,7 +429,7 @@
   "lon": 204.27,
   "kind": "candidate",
   "agency": "NASA",
-  "note": "LOLA high-illumination point on the Shackleton rim near the pole, lit 86.7% of the time at the surface (site 4).",
+  "note": "LOLA high-illumination point on the Shackleton rim near the pole, lit 86.7% of the time at the surface (site 4). The coordinate comes from a 240 m map (Mazarico et al. 2011); on the 5 m map the best-lit ground is nearby, not exactly here.",
   "source": "https://trek.nasa.gov/moon/trekarcgis2/rest/services/LRO_LOLA_MaxIlluminationSites_asl_SP/MapServer/0"
  },
  {
@@ -439,7 +439,7 @@
   "lon": 123.64,
   "kind": "candidate",
   "agency": "NASA",
-  "note": "LOLA high-illumination point on the ridge east of Shackleton, lit 85.5% of the time at the surface (site 7).",
+  "note": "LOLA high-illumination point on the ridge east of Shackleton, lit 85.5% of the time at the surface (site 7). The coordinate comes from a 240 m map (Mazarico et al. 2011); on the 5 m map the best-lit ground is nearby, not exactly here.",
   "source": "https://trek.nasa.gov/moon/trekarcgis2/rest/services/LRO_LOLA_MaxIlluminationSites_asl_SP/MapServer/0"
  },
  {
@@ -449,7 +449,7 @@
   "lon": 291.9,
   "kind": "candidate",
   "agency": "NASA",
-  "note": "LOLA high-illumination point on the de Gerlache rim, lit 84.6% of the time at the surface (site 11).",
+  "note": "LOLA high-illumination point on the de Gerlache rim, lit 84.6% of the time at the surface (site 11). The coordinate comes from a 240 m map (Mazarico et al. 2011); on the 5 m map the best-lit ground is nearby, not exactly here.",
   "source": "https://trek.nasa.gov/moon/trekarcgis2/rest/services/LRO_LOLA_MaxIlluminationSites_asl_SP/MapServer/0"
  },
  {
@@ -459,7 +459,7 @@
   "lon": 357.7,
   "kind": "candidate",
   "agency": "NASA",
-  "note": "LOLA high-illumination point on Mons Malapert, lit 81.8% of the time at the surface (site 23).",
+  "note": "LOLA high-illumination point on Mons Malapert, lit 81.8% of the time at the surface (site 23). The coordinate comes from a 240 m map (Mazarico et al. 2011); on the 5 m map the best-lit ground is nearby, not exactly here.",
   "source": "https://trek.nasa.gov/moon/trekarcgis2/rest/services/LRO_LOLA_MaxIlluminationSites_asl_SP/MapServer/0"
  },
  {
