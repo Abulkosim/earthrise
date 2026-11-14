@@ -211,9 +211,14 @@
   .right { grid-column: 3; grid-row: 2 / 4; z-index: 10; display: flex; align-items: flex-start; min-height: 0; pointer-events: none; }
   .site-panel { display: flex; flex-direction: column; width: 380px; max-height: 100%; margin-left: 12px; }
 
-  .stage { grid-column: 2; grid-row: 2; position: relative; z-index: 5; min-width: 0; pointer-events: none; }
+  .stage { grid-column: 2; grid-row: 2; position: relative; z-index: 5; min-width: 0; pointer-events: none; container: stage / inline-size; }
   /* bottom right of the free map; the scale has the bottom left */
   .status-pill { position: absolute; right: 0; bottom: 0; max-width: calc(100% - 190px); border-radius: 15px; }
+  .status-pill .status { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+  /* a narrow strip of map (both panels open on a small screen): the status takes the full width, above the scale */
+  @container stage (max-width: 560px) {
+    .status-pill { bottom: 40px; max-width: 100%; }
+  }
 
   .bottom { grid-column: 2 / -1; grid-row: 3; z-index: 10; min-width: 0; pointer-events: none; }
   .app:has(.left[data-collapsed='true']) .bottom { grid-column: 1 / -1; }

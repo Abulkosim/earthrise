@@ -251,34 +251,54 @@ function paint(canvas: HTMLCanvasElement, p: Paint): void {
         }
       }
     }
-    const rest = inView ? b.words : `${b.words}, out of view to the ${dx > 0 ? 'right' : 'left'}`
+    // the label says where the body is when it is outside the view; it is cut down until it fits the plot
+    const side = dx > 0 ? 'right' : 'left'
     const wName = ctx.measureText(name + ' ').width
+    const maxW = x1 - x0 - 16
+    let rest = b.words
+    for (const t of inView ? [b.words] : [`${b.words}, out of view to the ${side}`, `${b.words}, off to the ${side}`, b.words]) {
+      rest = t
+      if (wName + ctx.measureText(t).width <= maxW) break
+    }
     const w = wName + ctx.measureText(rest).width
     let lx: number
-    if (!inView) lx = dx > 0 ? x1 - 6 - w : x0 + 6
+    if (!inView) lx = dx > 0 ? x1 - 8 - w : x0 + 8
     else {
-      lx = cx + rpx + 6
-      if (lx + w > x1 - 6) lx = cx - rpx - 6 - w
-      lx = clamp(lx, x0 + 4, Math.max(x0 + 4, x1 - 6 - w))
+      lx = cx + rpx + 8
+      if (lx + w > x1 - 8) lx = cx - rpx - 8 - w
+      lx = clamp(lx, x0 + 8, Math.max(x0 + 8, x1 - 8 - w))
     }
-    labels.push({ name, rest, color, x: lx, y: clamp(cy, y0 + 8, y1 - 8), wName, w })
+    labels.push({ name, rest, color, x: lx, y: cy, wName, w })
   }
+  // keep the labels inside the plot, clear of the note in the top right corner and clear of each other
+  ctx.font = font(11)
+  const noteW = ctx.measureText(`heights ${niceNumber(pyd / pxd)}`).width
+  ctx.font = font(12)
+  const LH = 19
+  const top = (l: Label) => (l.x + l.w > x1 - noteW - 18 ? y0 + 26 : y0 + 11)
+  for (const l of labels) l.y = clamp(l.y, top(l), y1 - 11)
   if (labels.length === 2) {
     const [a, b] = labels
-    const overlapX = a.x < b.x + b.w && b.x < a.x + a.w
-    if (overlapX && Math.abs(a.y - b.y) < 15) {
-      let ny = b.y >= a.y ? a.y + 15 : a.y - 15
-      if (ny > y1 - 8 || ny < y0 + 8) ny = b.y >= a.y ? a.y - 15 : a.y + 15
-      b.y = clamp(ny, y0 + 8, y1 - 8)
+    const overlapX = a.x - 8 < b.x + b.w && b.x - 8 < a.x + a.w
+    if (overlapX && Math.abs(a.y - b.y) < LH) {
+      const fits = (y: number) => y >= top(b) && y <= y1 - 11
+      const first = b.y >= a.y ? a.y + LH : a.y - LH, second = b.y >= a.y ? a.y - LH : a.y + LH
+      b.y = fits(first) ? first : fits(second) ? second : clamp(first, top(b), y1 - 11)
     }
   }
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'left'
   for (const l of labels) {
+    // a dark plate under the words, so the paths and the terrain do not run through them
+    ctx.fillStyle = 'rgba(8, 8, 10, 0.8)'
+    ctx.beginPath()
+    if (ctx.roundRect) ctx.roundRect(l.x - 5, l.y - 8.5, l.w + 10, 17, 8.5)
+    else ctx.rect(l.x - 5, l.y - 8.5, l.w + 10, 17)
+    ctx.fill()
     ctx.fillStyle = l.color
-    ctx.fillText(l.name, l.x, l.y)
+    ctx.fillText(l.name, l.x, l.y + 0.5)
     ctx.fillStyle = col.d2
-    ctx.fillText(l.rest, l.x + l.wName, l.y)
+    ctx.fillText(l.rest, l.x + l.wName, l.y + 0.5)
   }
 
   // vertical exaggeration, stated plainly
