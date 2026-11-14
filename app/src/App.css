@@ -26,6 +26,7 @@ button.text:hover { text-decoration-color: var(--dust-1); }
 .top { grid-area: top; display: flex; align-items: baseline; gap: var(--gap-4); padding: 9px var(--gap-4) 8px; border-bottom: var(--rule); min-width: 0; }
 .top h1 { font-size: var(--t-xl); line-height: 1; font-weight: 500; }
 .top .tag { color: var(--dust-2); white-space: nowrap; }
+.top .shows { color: var(--dust-2); white-space: nowrap; display: flex; gap: var(--gap-3); align-items: baseline; }
 .top .status { margin-left: auto; color: var(--dust-3); font-size: var(--t-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .top nav { white-space: nowrap; }
 
@@ -105,7 +106,8 @@ button.text:hover { text-decoration-color: var(--dust-1); }
   .left { border-right: 0; border-top: var(--rule); }
   .sheet { border-left: 0; border-top: var(--rule); }
   .top { flex-wrap: wrap; }
-  .top .status { display: none; }
+  .top .shows { color: var(--dust-2); white-space: nowrap; display: flex; gap: var(--gap-3); align-items: baseline; }
+.top .status { display: none; }
 }
 
 .calendar { display: grid; align-items: end; padding-top: var(--gap-2); }
