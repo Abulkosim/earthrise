@@ -37,7 +37,7 @@ function clampView(v: MapViewState): MapViewState {
   const r = Math.hypot(v.cx, v.cy)
   return r > MAX_R ? { ...v, cx: (v.cx * MAX_R) / r, cy: (v.cy * MAX_R) / r } : v
 }
-// Points in the field. Starts at about a quarter of a million and halves on GPUs that take too long.
+// Points in the field. Starts at about a quarter of a million and shrinks on GPUs that take too long.
 let fieldBudget = 262144
 
 export function MapView(p: Props) {
@@ -143,10 +143,22 @@ export function MapView(p: Props) {
     if (id !== settleId.current) return
     requestFrame()
     status('horizons', 0)
-    const ok = await e.bake(q.brief.mission.mast, -fieldBudget, (f) => { if (id === settleId.current) status('horizons', f) })
-    if (!ok || id !== settleId.current) return
-    if (e.stats.bakeMs > 9000 && fieldBudget > 65536) fieldBudget /= 2
-    else if (e.stats.bakeMs < 2500 && fieldBudget < 262144) fieldBudget *= 2
+    // A few percent in, the time for the whole bake is known. If this machine would need more than
+    // 15 seconds, start again with as many points as it can do in about 8.
+    const t0 = performance.now()
+    let restart = false
+    const ok = await e.bake(q.brief.mission.mast, -fieldBudget, (f) => {
+      if (id !== settleId.current || restart) return
+      status('horizons', f)
+      const est = (performance.now() - t0) / f
+      if (f >= 0.03 && f < 0.3 && est > 15000 && fieldBudget > 16384) {
+        fieldBudget = Math.max(16384, Math.floor((fieldBudget * 8000) / est / 4096) * 4096)
+        restart = true
+        queueMicrotask(() => { void settle() })
+      }
+    })
+    if (!ok || restart || id !== settleId.current) return
+    if (e.stats.bakeMs < 2500 && fieldBudget < 262144) fieldBudget = Math.min(262144, fieldBudget * 2)
     await evaluate()
   }, [dpr, evaluate, requestFrame, status])
   const scheduleSettle = useCallback(() => {

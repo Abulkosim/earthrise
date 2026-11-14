@@ -17,7 +17,8 @@ const CHROME = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/M
 
 const browser = await puppeteer.launch({
   executablePath: CHROME, headless: 'new',
-  args: ['--use-angle=metal', '--enable-gpu', '--hide-scrollbars', '--window-size=1920,1080'],
+  // ANGLE=swiftshader runs on the CPU: very slow, but it shows what a machine without a real GPU gets
+  args: [`--use-angle=${process.env.ANGLE ?? 'metal'}`, '--enable-gpu', '--enable-unsafe-swiftshader', '--hide-scrollbars', '--window-size=1920,1080'],
   defaultViewport: { width: 1920, height: 1080, deviceScaleFactor: 1 },
 })
 const page = await browser.newPage()
