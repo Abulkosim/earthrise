@@ -24,7 +24,13 @@ planner sees the new answer for the whole map in seconds.
 
 ## Link to project demo
 
-TO ADD
+https://abulkosim.github.io/earthrise/demo.mp4
+
+[Team: a 28-second video, under the 30-second limit. It is served from the
+project's own site, so it plays in a browser with no login. If you would
+rather give a YouTube link, upload `video/out/earthrise-demo.mp4` as public or
+unlisted and paste that address here instead. The seven slides are an
+alternative demo, not an addition: the form takes one or the other.]
 
 ## Link to final project
 
@@ -32,9 +38,9 @@ https://abulkosim.github.io/earthrise/
 
 Source code: https://github.com/Abulkosim/earthrise
 
-[Team: the repository is private for now and the site is not up yet. Host the
-app on the team's server, put its address above, and make the repository
-public before submitting.]
+[Team: both addresses work only once the repositories are public and
+`deploy/go-live.sh` has run. Open both in a private browser window before
+submitting.]
 
 ## Detailed project description
 
