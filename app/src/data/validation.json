@@ -134,5 +134,273 @@
    "max_az_diff_deg": 8.074488130497558e-07,
    "max_el_diff_deg": 1.4958488193883568e-05
   }
- ]
+ ],
+ "goddard": {
+  "how": "verify.html?mode=goddard&fine=0.25; permanent shadow from the Goddard check on validation.html. Apple M2 Pro, Chrome, adjusted maps.",
+  "measured": "2026-11-14",
+  "horizons_s": 6.7,
+  "sun": {
+   "points": 262144,
+   "corr": 0.9422,
+   "mae_pts": 1.77,
+   "bias_pts": 0.64
+  },
+  "earth": {
+   "points": 262144,
+   "corr": 0.9757,
+   "mae_pts": 1.37,
+   "bias_pts": 0.47
+  },
+  "psr": {
+   "theirs": 55342,
+   "ours": 52666,
+   "ours_of_theirs": 0.931,
+   "theirs_of_ours": 0.978
+  }
+ },
+ "barker": {
+  "how": "verify.html?mode=barker&fine=0.25. Apple M2 Pro, Chrome. Paper: Barker et al. 2021, Table 2, case A.",
+  "measured": "2026-11-14",
+  "rows": [
+   {
+    "roi": 1,
+    "mast": 1,
+    "pixels": 306,
+    "avg": 76.55,
+    "paperAvgP1": 68.03,
+    "lcipDays": 140.64,
+    "paperLcipP1": 63.35,
+    "lcspDays": 13.57,
+    "paperLcspP99": 16.55
+   },
+   {
+    "roi": 1,
+    "mast": 5,
+    "pixels": 306,
+    "avg": 90.19,
+    "paperAvgP1": 89.26,
+    "lcipDays": 224.41,
+    "paperLcipP1": 215.79,
+    "lcspDays": 4.71,
+    "paperLcspP99": 5.29
+   },
+   {
+    "roi": 2,
+    "mast": 1,
+    "pixels": 265,
+    "avg": 76.23,
+    "paperAvgP1": 70.32,
+    "lcipDays": 158.43,
+    "paperLcipP1": 113.8,
+    "lcspDays": 13.83,
+    "paperLcspP99": 17.84
+   },
+   {
+    "roi": 2,
+    "mast": 5,
+    "pixels": 265,
+    "avg": 89.1,
+    "paperAvgP1": 88.51,
+    "lcipDays": 220.97,
+    "paperLcipP1": 216.28,
+    "lcspDays": 6.9,
+    "paperLcspP99": 7.31
+   },
+   {
+    "roi": 3,
+    "mast": 1,
+    "pixels": 125,
+    "avg": 73.43,
+    "paperAvgP1": 67.51,
+    "lcipDays": 170.42,
+    "paperLcipP1": 117.86,
+    "lcspDays": 16.71,
+    "paperLcspP99": 22.23
+   },
+   {
+    "roi": 3,
+    "mast": 5,
+    "pixels": 125,
+    "avg": 86.71,
+    "paperAvgP1": 84.53,
+    "lcipDays": 232.43,
+    "paperLcipP1": 216.89,
+    "lcspDays": 6.22,
+    "paperLcspP99": 8.41
+   },
+   {
+    "roi": 4,
+    "mast": 1,
+    "pixels": 476,
+    "avg": 77.97,
+    "paperAvgP1": 69.61,
+    "lcipDays": 195.15,
+    "paperLcipP1": 136.49,
+    "lcspDays": 9.66,
+    "paperLcspP99": 13.27
+   },
+   {
+    "roi": 4,
+    "mast": 5,
+    "pixels": 476,
+    "avg": 88.73,
+    "paperAvgP1": 88.12,
+    "lcipDays": 232.73,
+    "paperLcipP1": 231.2,
+    "lcspDays": 3.87,
+    "paperLcspP99": 4.0
+   },
+   {
+    "roi": 5,
+    "mast": 1,
+    "pixels": 345,
+    "avg": 76.25,
+    "paperAvgP1": 70.38,
+    "lcipDays": 171.6,
+    "paperLcipP1": 142.17,
+    "lcspDays": 8.46,
+    "paperLcspP99": 15.24
+   },
+   {
+    "roi": 5,
+    "mast": 5,
+    "pixels": 345,
+    "avg": 86.41,
+    "paperAvgP1": 85.71,
+    "lcipDays": 221.56,
+    "paperLcipP1": 218.98,
+    "lcspDays": 4.22,
+    "paperLcspP99": 4.52
+   },
+   {
+    "roi": 6,
+    "mast": 1,
+    "pixels": 355,
+    "avg": 78.16,
+    "paperAvgP1": 71.15,
+    "lcipDays": 181.04,
+    "paperLcipP1": 81.01,
+    "lcspDays": 9.29,
+    "paperLcspP99": 12.74
+   },
+   {
+    "roi": 6,
+    "mast": 5,
+    "pixels": 355,
+    "avg": 87.72,
+    "paperAvgP1": 87.35,
+    "lcipDays": 222.35,
+    "paperLcipP1": 220.98,
+    "lcspDays": 3.92,
+    "paperLcspP99": 4.16
+   },
+   {
+    "roi": 7,
+    "mast": 1,
+    "pixels": 242,
+    "avg": 73.66,
+    "paperAvgP1": 67.36,
+    "lcipDays": 116.83,
+    "paperLcipP1": 100.23,
+    "lcspDays": 10.12,
+    "paperLcspP99": 14.54
+   },
+   {
+    "roi": 7,
+    "mast": 5,
+    "pixels": 242,
+    "avg": 83.0,
+    "paperAvgP1": 82.79,
+    "lcipDays": 142.14,
+    "paperLcipP1": 119.07,
+    "lcspDays": 5.36,
+    "paperLcspP99": 5.42
+   }
+  ]
+ },
+ "site_panel": {
+  "start_utc": "2027-11-03T00:00:00",
+  "days": 14,
+  "mast_m": 2.0,
+  "sites": [
+   {
+    "id": "barker-site1-roi4",
+    "name": "Connecting ridge, region 4",
+    "lat": -89.45267,
+    "lon": 222.8513,
+    "lit": 1.0,
+    "longest_dark_h": 0,
+    "comm": 0.7679
+   },
+   {
+    "id": "connecting-ridge",
+    "name": "Connecting ridge",
+    "lat": -89.45,
+    "lon": 222.69,
+    "lit": 0.6364,
+    "longest_dark_h": 122,
+    "comm": 0.6101
+   },
+   {
+    "id": "a3-malapert-massif",
+    "name": "Malapert Massif region centre",
+    "lat": -86.0,
+    "lon": 359.76,
+    "lit": 0.3391,
+    "longest_dark_h": 173,
+    "comm": 0.6964
+   },
+   {
+    "id": "a3-mons-mouton-plateau",
+    "name": "Mons Mouton Plateau region centre",
+    "lat": -84.3,
+    "lon": 30.6,
+    "lit": 0.5606,
+    "longest_dark_h": 148,
+    "comm": 0.9196
+   }
+  ]
+ },
+ "site_panel_app": {
+  "how": "The app's own site calculation (engine.probe horizon, then computeSeries and summarize) for the site_panel sites and stay, run in the app page. Apple M2 Pro, Chrome. horizon_*_diff_deg: the app's 720-direction horizon against the reference's; hours_changed: hours of the stay where sunlit (at least half the Sun) or in contact differs.",
+  "measured": "2026-11-14",
+  "sites": [
+   {
+    "id": "barker-site1-roi4",
+    "lit": 1.0,
+    "longest_dark_h": 0,
+    "comm": 0.7708,
+    "horizon_mean_diff_deg": 0.009,
+    "horizon_max_diff_deg": 0.081,
+    "hours_changed": 1
+   },
+   {
+    "id": "connecting-ridge",
+    "lit": 0.6352,
+    "longest_dark_h": 122,
+    "comm": 0.6101,
+    "horizon_mean_diff_deg": 0.0056,
+    "horizon_max_diff_deg": 0.058,
+    "hours_changed": 0
+   },
+   {
+    "id": "a3-malapert-massif",
+    "lit": 0.3401,
+    "longest_dark_h": 173,
+    "comm": 0.6994,
+    "horizon_mean_diff_deg": 0.0127,
+    "horizon_max_diff_deg": 0.075,
+    "hours_changed": 1
+   },
+   {
+    "id": "a3-mons-mouton-plateau",
+    "lit": 0.5607,
+    "longest_dark_h": 148,
+    "comm": 0.9196,
+    "horizon_mean_diff_deg": 0.0057,
+    "horizon_max_diff_deg": 0.065,
+    "hours_changed": 0
+   }
+  ]
+ }
 }
