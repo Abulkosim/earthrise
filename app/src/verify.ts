@@ -1,6 +1,6 @@
 // Compares the GPU engine with the Python reference model (fixtures.json) and prints the errors.
 // Written with AI assistance (Claude); see the README.
-import { DataStore } from './engine/data'
+import { DataStore, loadGrid } from './engine/data'
 import { DEFAULT_MISSION, Engine } from './engine/engine'
 
 interface Fx {
@@ -12,9 +12,51 @@ const lines: string[] = []
 const log = (s: string) => { lines.push(s); out.textContent = lines.join('\n'); console.log('[verify] ' + s) }
 const q = new URLSearchParams(location.search)
 
+// Our 18.6-year average visibility against NASA Goddard's published maps (Mazarico et al. 2011 method).
+async function goddard(data: DataStore) {
+  const eng = new Engine(document.getElementById('c') as HTMLCanvasElement, data)
+  const cx = Number(q.get('cx') ?? 0), cy = Number(q.get('cy') ?? 0), fieldW = Number(q.get('w') ?? 512)
+  const cell = Number(q.get('cell') ?? 80)
+  const mpp = (cell * fieldW) / eng.canvas.width
+  const years = Number(q.get('years') ?? 18.6), dt = Number(q.get('dt') ?? 12)
+  const steps = Math.round((years * 365.25 * 24) / dt)
+  log(`Goddard check: centre ${cx}, ${cy} m, ${cell} m cells, ${fieldW} px field, ${years} years at ${dt} h steps (${steps} steps), observer on the surface`)
+  eng.setView(cx, cy, mpp)
+  await eng.loadFocus()
+  await eng.bake(0, fieldW)
+  log(`horizons: ${(eng.stats.bakeMs / 1000).toFixed(1)} s`)
+  const [w, h] = eng.fieldPx, f = eng.field!
+  const res: Record<string, unknown> = { bakeMs: eng.stats.bakeMs }
+  for (const body of ['sun', 'earth'] as const) {
+    const ref = await loadGrid(`${data.base}validation/avgvisib_${body}.bin.gz`, 5058)
+    // Earth: the published map counts any part of the disc, so the centre may sit 0.95 deg below the terrain
+    await eng.evaluate(0, steps, dt, { ...DEFAULT_MISSION, mast: 0, litMin: 1e-6, needDsn: false, earthMargin: -0.95 })
+    const st = body === 'sun' ? eng.readState(2) : eng.readState(0)
+    let n = 0, sd = 0, sad = 0, sq = 0, sa = 0, sb = 0, saa = 0, sbb = 0, sab = 0, within5 = 0
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const ours = st[(j * w + i) * 4 + 3] / steps
+      const x = f.x + ((i + 0.5) / w) * f.w, y = f.y + ((j + 0.5) / h) * f.h
+      const c = Math.floor(x / 60 + 2529), r = Math.floor(2529 - y / 60)
+      if (c < 0 || r < 0 || c >= 5058 || r >= 5058) continue
+      const theirs = ref[r * 5058 + c] * 2 * 0.00004
+      const d = ours - theirs
+      n++; sd += d; sad += Math.abs(d); sq += d * d; sa += ours; sb += theirs; saa += ours * ours; sbb += theirs * theirs; sab += ours * theirs
+      if (Math.abs(d) <= 0.05) within5++
+    }
+    const corr = (n * sab - sa * sb) / Math.sqrt((n * saa - sa * sa) * (n * sbb - sb * sb))
+    const r = { n, bias: sd / n, mae: sad / n, rmse: Math.sqrt(sq / n), corr, within5: within5 / n, meanOurs: sa / n, meanTheirs: sb / n, evalMs: eng.stats.evalMs }
+    res[body] = r
+    log(`${body.padEnd(5)}: ${n} points, ours ${(r.meanOurs * 100).toFixed(2)}% vs published ${(r.meanTheirs * 100).toFixed(2)}% on average; bias ${(r.bias * 100).toFixed(2)} pts, mean abs diff ${(r.mae * 100).toFixed(2)} pts, rms ${(r.rmse * 100).toFixed(2)} pts, correlation ${corr.toFixed(4)}, within 5 pts: ${(r.within5 * 100).toFixed(1)}%  (${(eng.stats.evalMs / 1000).toFixed(1)} s)`)
+    if (body === 'sun') eng.draw({ mode: 'metric', hours: 0, metric: 'litAny', range: [0, 1], hue: [0.953, 0.8, 0.455] })
+  }
+  ;(window as unknown as { __verify: unknown }).__verify = { done: true, goddard: res }
+  log('DONE')
+}
+
 async function main() {
   const data = new DataStore()
   await data.init()
+  if (q.get('mode') === 'goddard') return goddard(data)
   const fx: Fx = await (await fetch(data.base + 'fixtures.json')).json()
   const eng = new Engine(document.getElementById('c') as HTMLCanvasElement, data)
   if (q.get('growth')) eng.growth = Number(q.get('growth'))
