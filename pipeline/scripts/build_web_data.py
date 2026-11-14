@@ -10,7 +10,7 @@ Output (default app/public/data, not committed):
 Grids are int16 (height = DN * 0.5 m above 1737.4 km), each row delta-coded, then gzip.
 Coarser grids are block means of the LOLA maps.
 
-Usage: python scripts/build_web_data.py [dem] [ephem]
+Usage: python scripts/build_web_data.py [dem] [ephem] [validation]
 """
 import gzip
 import json
@@ -115,6 +115,21 @@ def build_ephem():
     }
 
 
+def build_validation():
+    """NASA Goddard's average visibility maps, repacked so the browser check can read them."""
+    d = OUT / "validation"
+    d.mkdir(parents=True, exist_ok=True)
+    out = {}
+    for key, src in (("sun", "avgvisib_85s_060m_201608.img"), ("earth", "avgvisib_85s_060m_201608_earth.img")):
+        a = np.fromfile(DATA_DIR / src, dtype="<i2").reshape(5058, 5058)
+        b = pack(a)
+        (d / f"avgvisib_{key}.bin.gz").write_bytes(b)
+        out[key] = {"file": f"validation/avgvisib_{key}.bin.gz", "n": 5058, "res": 60.0, "scale": 0.00004,
+                    "source": src.upper(), "bytes": len(b)}
+        print(f"validation {key}: {len(b) / 1e6:.1f} MB")
+    return out
+
+
 if __name__ == "__main__":
     what = sys.argv[1:] or ["dem", "ephem"]
     OUT.mkdir(parents=True, exist_ok=True)
@@ -127,4 +142,6 @@ if __name__ == "__main__":
         m["dem"] = build_dem()
     if "ephem" in what:
         m["ephem"] = build_ephem()
+    if "validation" in what:
+        m["validation"] = build_validation()
     mf.write_text(json.dumps(m, indent=1))
