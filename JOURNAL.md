@@ -104,16 +104,64 @@ served from `Abulkosim/earthrise-data`.
 Data downloaded so far (all NASA, logged in `pipeline/scripts/fetch_data.py`):
 SPICE kernels 46 MB, LOLA elevation maps 2.5 GB, Goddard visibility maps 102 MB.
 
+### 16:10 Repositories private again
+
+The team decided to keep both repositories private until close to the
+deadline. GitHub's free plan takes Pages down for private repositories, so the
+live site is off. The team lead will host it on a server with its own domain;
+`deploy/` has the script and the web server config for that. The Pages
+workflow is disabled until then.
+
+### 16:20 Build-out by six parallel agents (PR #9)
+
+- Validation page, "How we know it is right", with two checks the reader can
+  rerun on their own GPU.
+- Replays of five real landings (Chandrayaan-3, SLIM, IM-1, IM-2, Blue Ghost 1)
+  with sourced facts next to the model's numbers. The texts say where the model
+  cannot explain an outcome: IM-2 died in a 20 m crater, below what a 20 m map
+  can see.
+- 26 unit tests of the app's site model against values computed from SPICE.
+- README, CREDITS, method description, drafts of the submission texts.
+- An independent review of the engine and interface found 12 defects, 4 of
+  them serious (passes sharing one framebuffer, a background sweep cancelling
+  the map's own evaluation, a bad fallback where fine tiles are missing, a
+  date field that sent year 0002 to the model). All fixed, each reproduced
+  first. The 24-point check gives the same 0.0085 degrees after the fixes.
+
+### 16:25 Science meets engineering (PR #10)
+
+The challenge text speaks of coordination between science and engineering
+teams. Science wants ground that never sees the Sun, where ice can last.
+Engineering wants light. The engine now runs 18.6 years for every point in
+view (about 2 s), finds permanent shadow, and measures every point's distance
+to it. The brief can ask for permanent shadow within N km. Two new layers show
+the long run.
+
+Against NASA Goddard's map: of the ground they call permanently shadowed, 93%
+is in ours; of ours, 98% is in theirs.
+
+Default lander retuned to 450 W and 3 kWh. In the default view a landing on
+3 Nov 2027 now works on about 13% of the ground; the connecting ridge passes,
+the Malapert Massif and Mons Mouton Plateau region centres fail.
+
+### 16:30 Share links, demonstrations, end-to-end check (PRs #8, #11, #12)
+
+- "Show me" buttons: a lunar month of light, a landing date that slips, the
+  view from the ridge.
+- The whole view lives in the address, with a copy-link button.
+- `pnpm e2e` drives the app in headless Chrome and compares what the screen
+  says with the reference. Nine checks pass. It also takes the screenshots for
+  the slides.
+
 ### In progress
 
-- Public validation page with checks the reader can run in the browser.
-- Replays of real landings: Chandrayaan-3, SLIM, IM-1, IM-2, Blue Ghost.
-- Unit tests of the app's site model against the reference, in CI.
-- README, credits, submission texts.
-- Independent code review.
+- The seven-slide deck, built from real screenshots.
+- The 30 s video.
 
 ### Open
 
-- Slides (7) and a 30 s video, once the product is frozen.
+- Hosting: needs the server and domain from the team lead. Then one command:
+  `deploy/deploy.sh user@host`.
+- The repositories go public before submission.
 - The submission form on spaceappschallenge.org has to be filled in and
-  submitted by a team member; the tool cannot log in.
+  submitted by a team member; the tool cannot log in. The texts are ready.
