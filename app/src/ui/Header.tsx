@@ -46,7 +46,7 @@ interface ActionsProps {
 
 const Wordmark = memo(function Wordmark() {
   return (
-    <div className="glass flex h-[46px] min-w-0 items-center gap-3.5 rounded-full pr-5 pl-[18px]">
+    <div className="wordmark glass flex h-[46px] min-w-0 items-center gap-3.5 rounded-full pr-5 pl-[18px]">
       <h1 className="place text-2xl leading-none text-dust-1">Earthrise</h1>
       <p className="tag text-[12.5px] leading-tight text-dust-2">Every landing site at the Moon’s south pole, every hour, on one map.</p>
     </div>
@@ -63,7 +63,7 @@ const Actions = memo(function Actions(p: ActionsProps) {
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button type="button" size="sm" className="h-9 rounded-full px-3.5"><Play className="size-3.5 fill-current" aria-hidden="true" />Show me</Button>
+            <Button type="button" size="sm" className="h-9 rounded-full px-3.5" aria-label="Show me"><Play className="size-3.5 fill-current" aria-hidden="true" /><span className="show-label">Show me</span></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" sideOffset={10} className="w-[340px] p-1.5">
             {p.demos.map((d) => (
@@ -87,13 +87,13 @@ const Actions = memo(function Actions(p: ActionsProps) {
 
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={p.onCopy} aria-label="Copy a link to this view"><Link2 aria-hidden="true" /></Button>
+          <Button type="button" variant="ghost" size="icon" className="tool rounded-full" onClick={p.onCopy} aria-label="Copy a link to this view"><Link2 aria-hidden="true" /></Button>
         </TooltipTrigger>
         <TooltipContent side="bottom">Copy a link to this view</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button asChild variant="ghost" size="icon" className="rounded-full">
+          <Button asChild variant="ghost" size="icon" className="tool rounded-full">
             <a href={p.validationHref} aria-label="How we know it is right"><ShieldCheck aria-hidden="true" /></a>
           </Button>
         </TooltipTrigger>
@@ -101,7 +101,7 @@ const Actions = memo(function Actions(p: ActionsProps) {
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={p.onIntro} aria-label="New here?"><CircleHelp aria-hidden="true" /></Button>
+          <Button type="button" variant="ghost" size="icon" className="tool rounded-full" onClick={p.onIntro} aria-label="New here?"><CircleHelp aria-hidden="true" /></Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" align="end">New here?</TooltipContent>
       </Tooltip>
