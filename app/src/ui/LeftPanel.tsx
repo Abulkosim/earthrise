@@ -18,10 +18,24 @@ interface Props {
   onTab(t: LeftTab): void
   mission: React.ReactNode
   landings: React.ReactNode
+  /** a site sheet is open on the other side */
+  crowded: boolean
 }
+
+/** From 1100 px the panels float over the map; under 1400 px two of them leave only a strip of it. */
+const tight = () => window.innerWidth >= 1100 && window.innerWidth < 1400
 
 export function LeftPanel(p: Props) {
   const [collapsed, setCollapsed] = useState(false)
+  // On a small desktop this panel steps aside while a site sheet is open, so the map between them
+  // stays wide enough to use, and comes back as it was when the sheet closes. The pill still opens it.
+  const [crowdedWas, setCrowdedWas] = useState(false)
+  const [restore, setRestore] = useState<boolean | null>(null)
+  if (crowdedWas !== p.crowded) {
+    setCrowdedWas(p.crowded)
+    if (p.crowded && tight()) { setRestore(collapsed); setCollapsed(true) }
+    else if (!p.crowded && restore !== null) { setCollapsed(restore); setRestore(null) }
+  }
   const ref = useRef<HTMLDivElement>(null)
   useReportInset('left', ref, !collapsed)
   // the first arrival is part of the entrance on load (fourth in the 50 ms stagger); the class goes

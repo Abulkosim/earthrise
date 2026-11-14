@@ -5,7 +5,7 @@ import puppeteer from 'puppeteer-core'
 
 // The app's address: --url <address> on the command line, or EARTHRISE_URL, default the local dev server.
 const argUrl = (() => { const i = process.argv.indexOf('--url'); return i > 0 ? process.argv[i + 1] : undefined })()
-export const BASE = (argUrl ?? process.env.EARTHRISE_URL ?? 'http://localhost:5201/').replace(/\/?$/, '/')
+export const BASE = (argUrl ?? process.env.EARTHRISE_URL ?? 'http://localhost:5199/').replace(/\/?$/, '/')
 const CHROME = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms))

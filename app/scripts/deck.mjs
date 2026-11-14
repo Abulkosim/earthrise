@@ -3,7 +3,7 @@
 // slides need, then prints docs/submission/deck/index.html to a 7-page PDF at 1920x1080 px per page and
 // saves a PNG preview of every slide.
 //
-//   node scripts/deck.mjs [--url http://localhost:5201/] [--skip-shots] [--only 1,4]
+//   node scripts/deck.mjs [--url http://localhost:5199/] [--skip-shots] [--only 1,4]
 //
 // --skip-shots reuses the screenshots already in docs/submission/deck/shots/ (for layout work).
 // --only retakes the shots of the listed slides and keeps the rest (and their readings).
@@ -16,7 +16,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import puppeteer from 'puppeteer-core'
 
 const arg = (name, dflt) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : dflt }
-const URL0 = arg('--url', 'http://localhost:5201/').replace(/\/?$/, '/')
+const URL0 = arg('--url', 'http://localhost:5199/').replace(/\/?$/, '/')
 const SKIP_SHOTS = process.argv.includes('--skip-shots')
 const ONLY = arg('--only', '1,2,3,4,5,6,7').split(',').map(Number)
 const want = (...n) => n.some((x) => ONLY.includes(x))

@@ -286,3 +286,23 @@ to 100,000 points on a cold start. A fresh load now ends at 266,256 points in
   says how to fetch it. Music, effects and tools are in CREDITS.md.
 - Open: hosting (waiting for a server and a domain), then the live address
   goes on slide 7, in the form, the README and the video's last shot.
+
+### 20:15 to 21:00 GitHub Pages, small interface fixes, re-shoot
+
+- Hosting decided by the team lead: GitHub Pages, no server and no domain.
+  The address is https://abulkosim.github.io/earthrise/.
+- Pages holds 1 GB a site and the data is 2.4 GB. The data now lives in four
+  repositories (`earthrise-data`, `-20m`, `-5m-a`, `-5m-b`), each under the
+  limit; the manifest says where each terrain level is served, and the app
+  reads that. `deploy/pages_data.py` lays the data out, `deploy/go-live.sh`
+  turns the sites on and checks them.
+- Tested before anything is public: a local stand-in for the four sites, and
+  the end-to-end check against it, 10 of 10.
+- The repositories are still private. Pages on a private repository needs a
+  paid plan, so the sites go live when the team makes them public.
+- Three interface fixes: the phone header is one row; the playhead no longer
+  runs through site names on a phone; on a small desktop the mission panel
+  folds away while a site sheet is open.
+- Deck and video shot again after the fixes; both carry the live address.
+- Removed 9 GB of data nobody reads any more (the first build of the web
+  data, a clone of the data repository, the unadjusted 5 m and 10 m maps).

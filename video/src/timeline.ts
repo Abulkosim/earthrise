@@ -74,4 +74,4 @@ export const NAME = { wordmark: 'Earthrise', tagline: "Every landing site at the
 export const CLOSE = { line: 'Runs in a desktop browser. No install.', credit: 'Team Earthrise, NASA Space Apps Challenge 2026' };
 
 /** Default text for the live address line on the closing shot. Change it with --props (see README). */
-export const DEFAULT_LIVE_LINK = 'Link in the project page';
+export const DEFAULT_LIVE_LINK = 'abulkosim.github.io/earthrise';
