@@ -19,15 +19,16 @@ export interface Mission {
 }
 export const DEFAULT_MISSION: Mission = {
   mast: 2, litMin: 0.5, earthMargin: 0, needDsn: true,
-  arrayW: 400, loadLitW: 250, loadDarkW: 60, batteryWh: 1500, startWh: 1500,
+  // a small polar lander: enough battery to sit out about three days of shadow
+  arrayW: 450, loadLitW: 200, loadDarkW: 40, batteryWh: 3000, startWh: 3000,
 }
 
-export const METRICS = ['lit', 'longestDark', 'comm', 'longestCommGap', 'hoursAlive', 'litAndComm', 'litAny'] as const
+export const METRICS = ['lit', 'longestDark', 'comm', 'longestCommGap', 'hoursAlive', 'litAndComm', 'litAny', 'psrDistance'] as const
 export type Metric = (typeof METRICS)[number]
 
 const FOCUS_N = 2048
 const UNITS: Record<string, number> = {
-  uFar: 0, uMid: 1, uFocus: 2, uHorizon: 3, uEphem: 4, uS0: 5, uS1: 6, uS2: 7, uM0: 5, uM1: 6, uM2: 7, uNow: 8, uPoints: 9,
+  uFar: 0, uMid: 1, uFocus: 2, uHorizon: 3, uEphem: 4, uS0: 5, uS1: 6, uS2: 7, uM0: 5, uM1: 6, uM2: 7, uNow: 8, uPoints: 9, uPsr: 10,
 }
 const CHUNK = 96
 
@@ -61,12 +62,15 @@ export class Engine {
   private fbo: WebGLFramebuffer       // single attachment: bake, light now, probes, readbacks
   private fboEval: WebGLFramebuffer   // three attachments: mission evaluation only
   private bakeJob = 0
-  private evalJob = [0, 0]
+  private evalJob = [0, 0, 0]
   // evaluation state: per slot (0 the map, 1 background sweeps) three sets of three textures;
   // disp[slot] is the finished result, the other two are scratch
   private state: WebGLTexture[][][] = []
-  private disp = [0, 0]
-  private slotSteps = [0, 0]
+  private disp = [0, 0, 0]
+  private slotSteps = [0, 0, 0]
+  private slotRect: (Rect | null)[] = [null, null, null] // the map rectangle each slot's result belongs to
+  /** Distance in metres from each field pixel to ground that never saw the Sun in the long run; null until computed. */
+  psrDist: Float32Array | null = null
   private srcState: WebGLTexture[] | undefined
   private focusKey = ''
   private tile = 128
@@ -159,7 +163,7 @@ export class Engine {
     }
     bind(0, gl.TEXTURE_2D, this.tex.far); bind(1, gl.TEXTURE_2D, this.tex.mid); bind(2, gl.TEXTURE_2D, name === 'probe' ? this.tex.pfocus : this.tex.focus)
     bind(3, gl.TEXTURE_2D_ARRAY, this.tex.horizon); bind(4, gl.TEXTURE_2D, this.tex.ephem)
-    bind(8, gl.TEXTURE_2D, this.tex.now); bind(9, gl.TEXTURE_2D, this.tex.points)
+    bind(8, gl.TEXTURE_2D, this.tex.now); bind(9, gl.TEXTURE_2D, this.tex.points); bind(10, gl.TEXTURE_2D, this.tex.psr)
     const st = this.srcState
     if (st) for (let i = 0; i < 3; i++) bind(5 + i, gl.TEXTURE_2D, st[i])
   }
@@ -326,7 +330,8 @@ export class Engine {
   async bake(mast: number, width = 512, onProgress?: (f: number) => void): Promise<boolean> {
     const gl = this.gl, job = ++this.bakeJob, t0 = performance.now()
     // a new bake supersedes every evaluation in flight
-    this.evalJob[0]++; this.evalJob[1]++
+    this.evalJob[0]++; this.evalJob[1]++; this.evalJob[2]++
+    this.psrDist = null
     this.tile = Math.min(this.tile, 128)
     this.baked = false
     // width <= 0: pick the width that gives about -width pixels in total for this canvas shape
@@ -341,11 +346,14 @@ export class Engine {
       for (const k of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D_ARRAY, k, gl.NEAREST)
       this.tex.horizon = t
       for (const sl of this.state) for (const s of sl) for (const x of s) gl.deleteTexture(x)
-      this.state = [0, 1].map(() => [0, 1, 2].map(() => [0, 1, 2].map(() => this.floatTex(w, h, gl.RGBA32F, gl.LINEAR))))
-      this.disp = [0, 0]
+      this.state = [0, 1, 2].map(() => [0, 1, 2].map(() => [0, 1, 2].map(() => this.floatTex(w, h, gl.RGBA32F, gl.LINEAR))))
+      this.disp = [0, 0, 0]
+      if (this.tex.psr) gl.deleteTexture(this.tex.psr)
+      this.tex.psr = this.floatTex(w, h, gl.R32F, gl.LINEAR)
       this.fieldPx = [w, h]
       this.metricRect = null
-      this.slotSteps = [0, 0]
+      this.slotSteps = [0, 0, 0]
+      this.slotRect = [null, null, null]
     }
     const f = { ...this.view }
     // The stored range must reach as high as the Sun or the Earth can stand anywhere in view:
@@ -375,7 +383,8 @@ export class Engine {
   // ---- mission evaluation -----------------------------------------------
   /**
    * Run the mission over [t0, t0 + steps*dt] for every pixel of the baked field.
-   * slot 0 is what the map shows; slot 1 is for background sweeps and leaves the map alone.
+   * slot 0 is what the map shows; slot 1 is for background sweeps and leaves the map alone;
+   * slot 2 holds the long-run climate (see climate()).
    */
   async evaluate(t0Hours: number, steps: number, dtHours: number, m: Mission, onProgress?: (f: number) => void, slot = 0): Promise<boolean> {
     if (!this.baked || !this.field) return false
@@ -421,6 +430,7 @@ export class Engine {
     }
     this.disp[slot] = src // the finished result; the old one becomes scratch
     this.slotSteps[slot] = steps
+    this.slotRect[slot] = { ...f }
     if (slot === 0) {
       this.metricRect = { ...f }
       this.metricSteps = steps
@@ -428,6 +438,66 @@ export class Engine {
       this.stats.evalMs = performance.now() - tStart
     }
     return true
+  }
+
+  /**
+   * The long run: 18.6 years (one cycle of the Moon's orbit plane) in 12 h steps for every pixel.
+   * Gives the average sunlight and the ground that never sees any part of the Sun, and from that
+   * the distance of every pixel to permanent shadow. Science wants the shadow (it can hold ice),
+   * engineering wants the light; the distance lets a brief ask for both.
+   */
+  async climate(mast: number): Promise<boolean> {
+    const years = 18.6, dt = 12
+    const steps = Math.round((years * 365.25 * 24) / dt)
+    const m: Mission = { ...DEFAULT_MISSION, mast, litMin: 1e-6, needDsn: false }
+    if (!(await this.evaluate(0, steps, dt, m, undefined, 2))) return false
+    const [w, h] = this.fieldPx, f = this.field!
+    const st = this.readState(2, 2)
+    const inf = 1e20
+    const g = new Float64Array(w * h)
+    for (let i = 0; i < w * h; i++) g[i] = st[i * 4 + 3] === 0 ? 0 : inf // lit-any count of zero: permanent shadow
+    // exact squared Euclidean distance transform (Felzenszwalb and Huttenlocher), rows then columns
+    const pass = (len: number, get: (i: number) => number, set: (i: number, v: number) => void) => {
+      const v = new Int32Array(len), z = new Float64Array(len + 1)
+      let k = 0
+      v[0] = 0; z[0] = -inf; z[1] = inf
+      for (let q = 1; q < len; q++) {
+        let s = 0
+        for (;;) {
+          const p = v[k]
+          s = (get(q) + q * q - (get(p) + p * p)) / (2 * q - 2 * p)
+          if (s <= z[k] && k > 0) k--
+          else break
+        }
+        k++; v[k] = q; z[k] = s; z[k + 1] = inf
+      }
+      k = 0
+      const out = new Float64Array(len)
+      for (let q = 0; q < len; q++) {
+        while (z[k + 1] < q) k++
+        const p = v[k]
+        out[q] = (q - p) * (q - p) + get(p)
+      }
+      for (let q = 0; q < len; q++) set(q, out[q])
+    }
+    for (let y = 0; y < h; y++) pass(w, (i) => g[y * w + i], (i, val) => { g[y * w + i] = val })
+    for (let x = 0; x < w; x++) pass(h, (i) => g[i * w + x], (i, val) => { g[i * w + x] = val })
+    const cell = f.w / w
+    const d = new Float32Array(w * h)
+    for (let i = 0; i < w * h; i++) d[i] = Math.min(1e7, Math.sqrt(g[i]) * cell)
+    const gl = this.gl
+    gl.bindTexture(gl.TEXTURE_2D, this.tex.psr)
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, w, h, gl.RED, gl.FLOAT, d)
+    this.psrDist = d
+    return true
+  }
+  /** Distance in metres from a map point to permanent shadow, or null when unknown (outside the field). */
+  psrDistanceAt(x: number, y: number): number | null {
+    const r = this.field, d = this.psrDist
+    if (!r || !d) return null
+    const [w, h] = this.fieldPx
+    const px = Math.floor(((x - r.x) / r.w) * w), py = Math.floor(((y - r.y) / r.h) * h)
+    return px < 0 || py < 0 || px >= w || py >= h ? null : d[py * w + px]
   }
 
   /** Metrics at a map point, from the last evaluation. */
@@ -446,16 +516,19 @@ export class Engine {
     const n = this.metricSteps
     return {
       lit: out[0] / n, longestDark: out[2], comm: out[3] / n, longestCommGap: out[5],
-      hoursAlive: out[7], litAndComm: out[9] / n, litAny: out[11] / n,
+      hoursAlive: out[7], litAndComm: out[9] / n, litAny: out[11] / n, psrDistance: this.psrDistanceAt(x, y) ?? NaN,
     }
   }
   /** Share of the field (0..1) that meets the needs: min lit, max dark hours, min comm, min hours alive. */
-  passShare(needs: [number, number, number, number], slot = 0): number {
+  passShare(needs: [number, number, number, number], slot = 0, maxPsrM = 0): number {
     if (!this.slotSteps[slot]) return 0
     const a = this.readState(0, slot), b = this.readState(1, slot), n = this.slotSteps[slot], px = a.length / 4
+    const d = maxPsrM > 0 ? this.psrDist : null
+    if (maxPsrM > 0 && !d) return 0
     let ok = 0
     for (let i = 0; i < px; i++) {
-      if (a[i * 4] / n >= needs[0] && a[i * 4 + 2] <= needs[1] && a[i * 4 + 3] / n >= needs[2] && b[i * 4 + 3] >= needs[3]) ok++
+      if (a[i * 4] / n >= needs[0] && a[i * 4 + 2] <= needs[1] && a[i * 4 + 3] / n >= needs[2] && b[i * 4 + 3] >= needs[3]
+        && (!d || d[i] <= maxPsrM)) ok++
     }
     return ok / px
   }
@@ -472,19 +545,23 @@ export class Engine {
   draw(opts: {
     mode: 'now' | 'metric' | 'needs'; hours: number; metric?: Metric; range?: [number, number]; hue?: [number, number, number]
     needs?: [number, number, number, number]; earthTint?: boolean
+    slot?: number      // which evaluation to colour by: 0 the stay, 2 the long-run climate
+    maxPsrM?: number   // need: permanent shadow within this many metres (0: no such need)
   }) {
     const gl = this.gl, v = this.view
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.viewport(0, 0, this.canvas.width, this.canvas.height)
     const se = this.sunEarth(opts.hours)
-    const nr = this.nowRect, mr = this.metricRect
-    this.srcState = this.state[0]?.[this.disp[0]]
+    const slot = opts.slot ?? 0
+    const nr = this.nowRect, mr = this.slotRect[slot]
+    this.srcState = this.state[slot]?.[this.disp[slot]]
     this.use('view', {
       uView: [v.x, v.y, v.w, v.h], uViewPx: [this.canvas.width, this.canvas.height], uPx: this.mpp,
       uNowRect: nr ? [nr.x, nr.y, nr.w, nr.h] : [0, 0, 0, 0], uMRect: mr ? [mr.x, mr.y, mr.w, mr.h] : [0, 0, 0, 0],
       uSunDir: se.sun.slice(0, 3), uMode: opts.mode === 'now' ? 0 : opts.mode === 'metric' ? 1 : 2,
       uMetric: METRICS.indexOf(opts.metric ?? 'lit'), uRange: opts.range ?? [0, 1], uHue: opts.hue ?? [1, 1, 1],
-      uSteps: Math.max(1, this.metricSteps), uNeeds: opts.needs ?? [0, 1e6, 0, 0], uEarthTint: opts.earthTint ?? true,
+      uSteps: Math.max(1, this.slotSteps[slot]), uNeeds: opts.needs ?? [0, 1e6, 0, 0], uEarthTint: opts.earthTint ?? true,
+      uNeedPsr: this.psrDist ? (opts.maxPsrM ?? 0) : 0, uPsrOn: !!this.psrDist,
     })
     this.tri()
   }
