@@ -74,6 +74,15 @@ button.text:hover { text-decoration-color: var(--dust-1); }
 }
 
 /* ---- site sheet ---- */
+.intro {
+  grid-area: map; align-self: start; justify-self: start; z-index: 2;
+  margin: var(--gap-4); padding: var(--gap-4) var(--gap-5); max-width: 50ch;
+  background: rgba(0, 0, 0, 0.82); font-size: var(--t-md); line-height: 1.55;
+}
+.intro h2 { font-size: var(--t-lg); margin-bottom: var(--gap-2); }
+.intro p { color: var(--dust-1); margin-bottom: var(--gap-2); }
+.intro-actions { display: flex; flex-wrap: wrap; gap: var(--gap-2) var(--gap-4); margin: var(--gap-3) 0 0; }
+
 /* The sheet lies over the right edge of the map. The map keeps its size, so opening a site
    does not throw away the horizons already traced for the view. */
 .sheet { grid-area: map; justify-self: end; width: min(372px, 100%); z-index: 3; overflow-y: auto; border-left: var(--rule); padding: var(--gap-4); background: var(--ground-1); }
