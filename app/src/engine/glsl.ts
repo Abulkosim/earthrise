@@ -265,6 +265,7 @@ uniform vec3 uHue;        // colour of the bright end
 uniform float uSteps;
 uniform vec4 uNeeds;      // min lit fraction, max dark hours, min comm fraction, min hours alive
 uniform float uPx;        // metres per screen pixel
+uniform float uEarthTint; // 1: tint ground that has the Earth in view
 out vec4 o;
 void main(){
   vec2 p = uView.xy + uView.zw * gl_FragCoord.xy / uViewPx;
@@ -283,9 +284,12 @@ void main(){
     vec4 nw = vec4(0.0);
     if (uNowRect.z > 0.0) nw = texture(uNow, (p - uNowRect.xy) / uNowRect.zw);
     float cosi = max(dot(n, uSunDir), 0.0);
-    float lum = 1.0 - exp(-nw.x * cosi * 7.0);
-    col = vec3(0.86, 0.84, 0.80) * (0.025 * relief + lum);
-    if (nw.z > 0.0) col += vec3(0.010, 0.035, 0.060) * (0.4 + 0.6 * relief);
+    // grazing Sun: flat ground gets cos(i) of a few percent, Sun-facing slopes ten times more.
+    // A Reinhard curve keeps both readable.
+    float L = nw.x * cosi;
+    float lum = 1.12 * L / (L + 0.09);
+    col = vec3(0.90, 0.88, 0.84) * (0.022 * relief + lum);
+    if (uEarthTint > 0.5 && nw.z > 0.0) col += vec3(0.012, 0.040, 0.070) * (0.35 + 0.65 * relief);
   } else {
     vec2 uv = (p - uMRect.xy) / uMRect.zw;
     vec4 m0 = texture(uM0, uv), m1 = texture(uM1, uv), m2 = texture(uM2, uv);

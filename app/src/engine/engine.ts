@@ -56,8 +56,12 @@ export class Engine {
   private progs: Record<string, Prog> = {}
   private tex: Record<string, WebGLTexture> = {}
   private fbo: WebGLFramebuffer
-  private state: WebGLTexture[][] = []
-  private cur = 0
+  // evaluation state: per slot (0 the map, 1 background sweeps) three sets of three textures;
+  // disp[slot] is the finished result, the other two are scratch
+  private state: WebGLTexture[][][] = []
+  private disp = [0, 0]
+  private slotSteps = [0, 0]
+  private srcState: WebGLTexture[] | undefined
   private job = 0
   private focusKey = ''
   private tile = 128
@@ -149,7 +153,7 @@ export class Engine {
     bind(0, gl.TEXTURE_2D, this.tex.far); bind(1, gl.TEXTURE_2D, this.tex.mid); bind(2, gl.TEXTURE_2D, name === 'probe' ? this.tex.pfocus : this.tex.focus)
     bind(3, gl.TEXTURE_2D_ARRAY, this.tex.horizon); bind(4, gl.TEXTURE_2D, this.tex.ephem)
     bind(8, gl.TEXTURE_2D, this.tex.now); bind(9, gl.TEXTURE_2D, this.tex.points)
-    const st = this.state[this.cur]
+    const st = this.srcState
     if (st) for (let i = 0; i < 3; i++) bind(5 + i, gl.TEXTURE_2D, st[i])
   }
   private tri() { this.gl.drawArrays(this.gl.TRIANGLES, 0, 3) }
@@ -308,7 +312,10 @@ export class Engine {
   async bake(mast: number, width = 512, onProgress?: (f: number) => void): Promise<boolean> {
     const gl = this.gl, job = ++this.job, t0 = performance.now()
     this.baked = false
-    const w = width, h = Math.max(16, Math.round((width * this.canvas.height) / this.canvas.width))
+    // width <= 0: pick the width that gives about -width pixels in total for this canvas shape
+    const aspect = this.canvas.width / this.canvas.height
+    const w = width > 0 ? width : Math.min(1024, Math.round(Math.sqrt(-width * aspect) / 16) * 16)
+    const h = Math.max(16, Math.round(w / aspect))
     if (this.fieldPx[0] !== w || this.fieldPx[1] !== h || !this.tex.horizon) {
       if (this.tex.horizon) gl.deleteTexture(this.tex.horizon)
       const t = gl.createTexture()!
@@ -316,10 +323,12 @@ export class Engine {
       gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 1, gl.RGB10_A2, w, h, G.LAYERS)
       for (const k of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D_ARRAY, k, gl.NEAREST)
       this.tex.horizon = t
-      for (const s of this.state) for (const x of s) gl.deleteTexture(x)
-      this.state = [0, 1].map(() => [0, 1, 2].map(() => this.floatTex(w, h, gl.RGBA32F, gl.LINEAR)))
+      for (const sl of this.state) for (const s of sl) for (const x of s) gl.deleteTexture(x)
+      this.state = [0, 1].map(() => [0, 1, 2].map(() => [0, 1, 2].map(() => this.floatTex(w, h, gl.RGBA32F, gl.LINEAR))))
+      this.disp = [0, 0]
       this.fieldPx = [w, h]
       this.metricRect = null
+      this.slotSteps = [0, 0]
     }
     const f = { ...this.view }
     const step = (2 * Math.PI) / G.NAZ
@@ -343,17 +352,21 @@ export class Engine {
   }
 
   // ---- mission evaluation -----------------------------------------------
-  /** Run the mission over [t0, t0 + steps*dt] for every pixel of the baked field. */
-  async evaluate(t0Hours: number, steps: number, dtHours: number, m: Mission, onProgress?: (f: number) => void): Promise<boolean> {
+  /**
+   * Run the mission over [t0, t0 + steps*dt] for every pixel of the baked field.
+   * slot 0 is what the map shows; slot 1 is for background sweeps and leaves the map alone.
+   */
+  async evaluate(t0Hours: number, steps: number, dtHours: number, m: Mission, onProgress?: (f: number) => void, slot = 0): Promise<boolean> {
     if (!this.baked || !this.field) return false
     const gl = this.gl, job = ++this.job, tStart = performance.now()
     const [w, h] = this.fieldPx, f = this.field
+    const sets = this.state[slot]
+    const scratch = [0, 1, 2].filter((i) => i !== this.disp[slot])
+    let src = scratch[0], dst = scratch[1]
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo)
-    // initial state
-    this.cur = 0
     const init = [[0, 0, 0, 0], [0, 0, m.startWh, 0], [m.startWh, 0, 0, 0]]
     for (let i = 0; i < 3; i++) {
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.state[0][i], 0)
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, sets[src][i], 0)
       gl.drawBuffers([gl.COLOR_ATTACHMENT0])
       gl.clearBufferfv(gl.COLOR, 0, init[i])
     }
@@ -366,16 +379,17 @@ export class Engine {
         buf.set([s[0], s[1], s[2], Math.asin(695700 / s[3])], k * 4)
         buf.set([s[4], s[5], s[6], s[7] + Math.min(s[8], 1) * 0.999], (CHUNK + k) * 4)
       }
-      const dst = this.state[1 - this.cur]
+      const from = sets[src], to = sets[dst]
       const setup = () => {
-        // the chunk is re-uploaded on every setup: another evaluation may not run in between, but a draw may
+        // the chunk is re-uploaded on every setup, since a map redraw may have run in between
         gl.activeTexture(gl.TEXTURE0 + 4)
         gl.bindTexture(gl.TEXTURE_2D, this.tex.ephem)
         gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, CHUNK, 2, gl.RGBA, gl.FLOAT, buf)
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo)
-        for (let i = 0; i < 3; i++) gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, dst[i], 0)
+        for (let i = 0; i < 3; i++) gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, to[i], 0)
         gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1, gl.COLOR_ATTACHMENT2])
         gl.viewport(0, 0, w, h)
+        this.srcState = from
         this.use('eval', {
           uField: [f.x, f.y, f.w, f.h], uFieldPx: [w, h], uSteps: n, uDt: dtHours, uMast: m.mast, uLitMin: m.litMin,
           uEarthMargin: m.earthMargin, uNeedDsn: m.needDsn, uPower: [m.arrayW, m.loadLitW, m.loadDarkW, m.batteryWh],
@@ -386,13 +400,17 @@ export class Engine {
       for (let i = 1; i < 3; i++) gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, null, 0)
       gl.drawBuffers([gl.COLOR_ATTACHMENT0])
       if (!ok) return false
-      this.cur = 1 - this.cur
+      ;[src, dst] = [dst, src]
       onProgress?.(Math.min(1, (k0 + n) / steps))
     }
-    this.metricRect = { ...f }
-    this.metricSteps = steps
-    this.metricHours = steps * dtHours
-    this.stats.evalMs = performance.now() - tStart
+    this.disp[slot] = src // the finished result; the old one becomes scratch
+    this.slotSteps[slot] = steps
+    if (slot === 0) {
+      this.metricRect = { ...f }
+      this.metricSteps = steps
+      this.metricHours = steps * dtHours
+      this.stats.evalMs = performance.now() - tStart
+    }
     return true
   }
 
@@ -406,7 +424,7 @@ export class Engine {
     const gl = this.gl, out = new Float32Array(12)
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo)
     for (let i = 0; i < 3; i++) {
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.state[this.cur][i], 0)
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.state[0][this.disp[0]][i], 0)
       gl.readPixels(px, py, 1, 1, gl.RGBA, gl.FLOAT, out.subarray(i * 4, i * 4 + 4))
     }
     const n = this.metricSteps
@@ -415,11 +433,21 @@ export class Engine {
       hoursAlive: out[7], litAndComm: out[9] / n, litAny: out[11] / n,
     }
   }
+  /** Share of the field (0..1) that meets the needs: min lit, max dark hours, min comm, min hours alive. */
+  passShare(needs: [number, number, number, number], slot = 0): number {
+    if (!this.slotSteps[slot]) return 0
+    const a = this.readState(0, slot), b = this.readState(1, slot), n = this.slotSteps[slot], px = a.length / 4
+    let ok = 0
+    for (let i = 0; i < px; i++) {
+      if (a[i * 4] / n >= needs[0] && a[i * 4 + 2] <= needs[1] && a[i * 4 + 3] / n >= needs[2] && b[i * 4 + 3] >= needs[3]) ok++
+    }
+    return ok / px
+  }
   /** Whole metric layer as floats (row 0 at the bottom of the field). */
-  readState(i: number): Float32Array {
+  readState(i: number, slot = 0): Float32Array {
     const gl = this.gl, [w, h] = this.fieldPx, out = new Float32Array(w * h * 4)
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo)
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.state[this.cur][i], 0)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.state[slot][this.disp[slot]][i], 0)
     gl.readPixels(0, 0, w, h, gl.RGBA, gl.FLOAT, out)
     return out
   }
@@ -427,19 +455,20 @@ export class Engine {
   // ---- picture ----------------------------------------------------------
   draw(opts: {
     mode: 'now' | 'metric' | 'needs'; hours: number; metric?: Metric; range?: [number, number]; hue?: [number, number, number]
-    needs?: [number, number, number, number]
+    needs?: [number, number, number, number]; earthTint?: boolean
   }) {
     const gl = this.gl, v = this.view
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.viewport(0, 0, this.canvas.width, this.canvas.height)
     const se = this.sunEarth(opts.hours)
     const nr = this.nowRect, mr = this.metricRect
+    this.srcState = this.state[0]?.[this.disp[0]]
     this.use('view', {
       uView: [v.x, v.y, v.w, v.h], uViewPx: [this.canvas.width, this.canvas.height], uPx: this.mpp,
       uNowRect: nr ? [nr.x, nr.y, nr.w, nr.h] : [0, 0, 0, 0], uMRect: mr ? [mr.x, mr.y, mr.w, mr.h] : [0, 0, 0, 0],
       uSunDir: se.sun.slice(0, 3), uMode: opts.mode === 'now' ? 0 : opts.mode === 'metric' ? 1 : 2,
       uMetric: METRICS.indexOf(opts.metric ?? 'lit'), uRange: opts.range ?? [0, 1], uHue: opts.hue ?? [1, 1, 1],
-      uSteps: Math.max(1, this.metricSteps), uNeeds: opts.needs ?? [0, 1e6, 0, 0],
+      uSteps: Math.max(1, this.metricSteps), uNeeds: opts.needs ?? [0, 1e6, 0, 0], uEarthTint: opts.earthTint ?? true,
     })
     this.tri()
   }
