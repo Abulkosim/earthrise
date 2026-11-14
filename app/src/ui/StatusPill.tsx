@@ -15,7 +15,7 @@ export function StatusPill({ status, text }: { status: MapStatus; text: string }
             className="dot" aria-hidden="true"
             style={working ? { background: 'var(--dust-1)', animation: 'status-pulse 1.1s ease-in-out infinite' } : undefined}
           />
-          <p className="status narrow min-w-0 text-[12px] leading-tight text-dust-2" role="status">{text}</p>
+          <p className="status narrow min-w-0 text-[12px] leading-tight text-dust-2" role="status" title={text}>{text}</p>
           {status.phase === 'horizons' && (
             <span className="absolute inset-x-0 bottom-0 h-0.5 bg-white/8" aria-hidden="true">
               <span className="block h-full bg-dust-1 transition-[width] duration-200" style={{ width: `${Math.round(status.progress * 100)}%` }} />
