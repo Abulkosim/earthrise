@@ -204,6 +204,42 @@ void main(){
   o = vec4(fs, degrees(sEl - sHz), degrees(eEl - eHz), degrees(sEl));
 }`
 
+// Horizon elevation (rad) at azimuth az for the fragment's own pixel, from the baked cache.
+const HZ = `float hz(float az){
+  float a = degrees(az) * ${(NAZ / 360).toFixed(1)};
+  a = a < 0.0 ? a + ${NAZ.toFixed(1)} : a;
+  float f = fract(a); int i0 = int(floor(a)) % ${NAZ}; int i1 = (i0 + 1) % ${NAZ};
+  ivec2 px = ivec2(gl_FragCoord.xy);
+  float v0 = texelFetch(uHorizon, ivec3(px, i0 / 3), 0)[i0 % 3];
+  float v1 = texelFetch(uHorizon, ivec3(px, i1 / 3), 0)[i1 % 3];
+  return radians(EL_MIN + mix(v0, v1, f) * (uElMax - EL_MIN));
+}
+`
+
+// The light for one instant from the cached horizons: one lookup per pixel instead of a walk.
+// A hundred times cheaper than FS_NOW, at the cache's resolution. Used while time is playing.
+export const FS_NOWFAST = COMMON + `
+uniform sampler2DArray uHorizon;
+uniform vec4 uField;
+uniform vec2 uFieldPx;
+uniform float uMast;
+uniform vec4 uSun;     // unit vector, angular radius (rad)
+uniform vec4 uEarth;   // km from Moon centre, eclipse fraction
+out vec4 o;
+${HZ}
+void main(){
+  vec2 p = uField.xy + uField.zw * gl_FragCoord.xy / uFieldPx;
+  vec3 up, east, north; frame(p, up, east, north);
+  float h0 = groundHeight(p) + uMast;
+  float sEl = asin(clamp(dot(uSun.xyz, up), -1.0, 1.0));
+  float sHz = hz(atan(dot(uSun.xyz, east), dot(uSun.xyz, north)));
+  float fs = diskFraction(sEl, sHz, uSun.w) * (1.0 - uEarth.w);
+  vec3 e = normalize(uEarth.xyz - up * ((R + h0) * 1e-3));
+  float eEl = asin(clamp(dot(e, up), -1.0, 1.0));
+  float eHz = hz(atan(dot(e, east), dot(e, north)));
+  o = vec4(fs, degrees(sEl - sHz), degrees(eEl - eHz), degrees(sEl));
+}`
+
 // Mission evaluation over a run of time steps, from the baked horizons.
 // State is carried between draws so that long windows can be done in chunks.
 export const FS_EVAL = COMMON + `
@@ -225,16 +261,7 @@ uniform vec3 uPanel;        // 1 when the array is fixed, the azimuth it faces (
 layout(location = 0) out vec4 o0;
 layout(location = 1) out vec4 o1;
 layout(location = 2) out vec4 o2;
-float hz(float az){
-  float a = degrees(az) * ${(NAZ / 360).toFixed(1)};
-  a = a < 0.0 ? a + ${NAZ.toFixed(1)} : a;
-  float f = fract(a); int i0 = int(floor(a)) % ${NAZ}; int i1 = (i0 + 1) % ${NAZ};
-  ivec2 px = ivec2(gl_FragCoord.xy);
-  float v0 = texelFetch(uHorizon, ivec3(px, i0 / 3), 0)[i0 % 3];
-  float v1 = texelFetch(uHorizon, ivec3(px, i1 / 3), 0)[i1 % 3];
-  return radians(EL_MIN + mix(v0, v1, f) * (uElMax - EL_MIN));
-}
-void main(){
+${HZ}void main(){
   ivec2 px = ivec2(gl_FragCoord.xy);
   vec4 s0 = texelFetch(uS0, px, 0), s1 = texelFetch(uS1, px, 0), s2 = texelFetch(uS2, px, 0);
   vec2 p = uField.xy + uField.zw * gl_FragCoord.xy / uFieldPx;
