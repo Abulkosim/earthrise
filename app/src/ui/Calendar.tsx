@@ -15,7 +15,16 @@ interface Props {
   onLanding(h: number): void
 }
 
-const H = 30
+const H = 44
+
+/** A bar with rounded top corners, in CSS pixels. */
+function bar(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  const r = Math.min(2.5, w / 2, h / 2)
+  g.beginPath()
+  if (g.roundRect) g.roundRect(x, y, w, h, [r, r, 0, 0])
+  else g.rect(x, y, w, h)
+  g.fill()
+}
 
 export function Calendar(p: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
@@ -31,6 +40,7 @@ export function Calendar(p: Props) {
   const d = p.data
   let peak = 0
   if (d) for (let i = 0; i < d.done; i++) if (d.share[i] > peak) peak = d.share[i]
+  const idx = hover !== null && d ? Math.floor((hover - d.t0) / d.stepH) : -1
 
   useEffect(() => {
     const c = ref.current
@@ -51,23 +61,28 @@ export function Calendar(p: Props) {
       const s = d.share[i]
       if (!(s > 0)) continue
       const x0 = x(d.t0 + i * d.stepH), x1 = x(d.t0 + (i + 1) * d.stepH)
-      const bh = Math.max(2, (s / top) * (H - 4))
+      const bh = Math.max(2, (s / top) * (H - 6))
       const on = p.landing >= d.t0 + i * d.stepH && p.landing < d.t0 + (i + 1) * d.stepH
+      g.globalAlpha = on || i === idx ? 1 : 0.42
       g.fillStyle = col(on ? '--both' : '--dust-2')
-      g.fillRect(x0 + 0.5, H - 1 - bh, Math.max(1, x1 - x0 - 1), bh)
+      if (on) { g.shadowColor = 'rgba(242, 238, 230, 0.55)'; g.shadowBlur = 10 }
+      bar(g, x0 + 0.75, H - 1 - bh, Math.max(1, x1 - x0 - 1.5), bh)
+      g.shadowBlur = 0
     }
+    g.globalAlpha = 1
     // days still being worked out
     if (d.done < d.share.length) {
       g.fillStyle = col('--ground-2')
+      g.globalAlpha = 0.6
       g.fillRect(x(d.t0 + d.done * d.stepH), 0, w, H - 1)
+      g.globalAlpha = 1
     }
-  }, [d, w, peak, p.t0, p.hours, p.landing])
+  }, [d, w, peak, idx, p.t0, p.hours, p.landing])
 
   const at = (ev: React.PointerEvent) => {
     const r = ref.current!.getBoundingClientRect()
     return p.t0 + ((ev.clientX - r.left) / r.width) * p.hours
   }
-  const idx = hover !== null && d ? Math.floor((hover - d.t0) / d.stepH) : -1
   const share = d && idx >= 0 && idx < d.done ? d.share[idx] : null
   const pct = (s: number) => (s === 0 ? 'none' : s < 0.001 ? 'under 0.1%' : `${(s * 100).toFixed(s < 0.1 ? 1 : 0)}%`)
 

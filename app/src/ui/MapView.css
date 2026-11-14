@@ -13,40 +13,151 @@
 .map-chart { position: absolute; inset: 0; pointer-events: none; }
 
 .graticule circle, .graticule line { fill: none; stroke: var(--dust-1); stroke-opacity: 0.11; stroke-width: 1; }
-.graticule-text text { fill: var(--dust-2); fill-opacity: 0.75; font-size: 11px; }
+.graticule-text text { fill: var(--dust-2); font-size: 11px; paint-order: stroke; stroke: rgba(5, 5, 6, 0.5); stroke-width: 2.5px; stroke-linejoin: round; }
 
 .names text {
   fill: var(--dust-1);
   fill-opacity: 0.8;
   text-anchor: middle;
   paint-order: stroke;
-  stroke: rgba(0, 0, 0, 0.55);
+  stroke: rgba(5, 5, 6, 0.55);
   stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
+/* a site: a ring with a dark edge under it, so it reads on lit and on dark ground alike */
 .site { pointer-events: auto; cursor: pointer; }
-.site circle { fill: none; stroke: var(--dust-1); stroke-width: 1.5; }
-.site text { fill: var(--dust-1); font-size: 13px; paint-order: stroke; stroke: rgba(0, 0, 0, 0.6); stroke-width: 3px; }
-.site.cmp circle { stroke-width: 2.5; }
-.site.sel circle { stroke: var(--both); stroke-width: 2; }
-.site.sel text { font-size: 15px; }
+.site .hit { fill: transparent; stroke: none; }
+.site .under { fill: rgba(5, 5, 6, 0.4); stroke: rgba(5, 5, 6, 0.6); stroke-width: 4.5; }
+.site .ring { fill: none; stroke: var(--dust-1); stroke-width: 1.5; transition: stroke-width 140ms ease; }
+.site:hover .ring { stroke-width: 2.5; }
+.site.cmp .ring { stroke-width: 2.5; }
+.site.sel .ring { stroke: var(--both); stroke-width: 2; }
+.site .core { fill: var(--both); }
 
-.toward text { fill: var(--dust-2); font-size: 11.5px; paint-order: stroke; stroke: rgba(0, 0, 0, 0.6); stroke-width: 3px; }
-.toward .sun { fill: var(--sun); }
-.toward .earth { fill: var(--earth); }
+/* ---- marks over the chart: site names, the selected site's pulse, the Sun and the Earth, the scale ---- */
+.map-marks { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.map-marks > * { position: absolute; left: 0; top: 0; }
 
-.scale line { stroke: var(--dust-2); stroke-width: 1; }
-.scale text { fill: var(--dust-2); font-size: 11px; }
+.site-label {
+  transform: translateY(-50%);
+  padding: 1px 9px 3px;
+  border-radius: 999px;
+  background: rgba(14, 14, 16, 0.76);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  color: var(--dust-1);
+  font-size: 13.5px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.site-label.sel {
+  z-index: 1;
+  padding: 2px 11px 4px;
+  background: rgba(14, 14, 16, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(242, 238, 230, 0.3), 0 8px 20px -8px rgba(0, 0, 0, 0.8);
+  font-size: 15px;
+}
 
+/* the selected site: a ring that spreads and fades */
+.site-pulse {
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1.5px var(--both);
+  animation: site-pulse 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+  will-change: transform, opacity;
+}
+@keyframes site-pulse {
+  from { transform: scale(1); opacity: 0.85; }
+  80%, to { transform: scale(3.4); opacity: 0; }
+}
+
+/* where the Sun and the Earth stand, at the edge of the free map: a glowing disc and a label */
+.toward-mark { --hue: 245, 201, 106; width: 0; height: 0; }
+.toward-mark.is-earth { --hue: 125, 184, 240; }
+.toward-mark i {
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: rgb(var(--hue));
+  box-shadow: 0 0 0 3px rgba(var(--hue), 0.2), 0 0 0 1px rgba(5, 5, 6, 0.5);
+}
+.toward-mark i::after {
+  content: '';
+  position: absolute;
+  inset: -16px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(var(--hue), 0.55), rgba(var(--hue), 0) 68%);
+  animation: toward-glow 3.6s ease-in-out infinite alternate;
+  will-change: opacity;
+}
+@keyframes toward-glow {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
+}
+.toward-mark b {
+  position: absolute;
+  top: 0;
+  transform: translateY(-50%);
+  padding: 2px 9px 3px;
+  border-radius: 999px;
+  background: rgba(14, 14, 16, 0.8);
+  box-shadow: inset 0 0 0 1px rgba(var(--hue), 0.28);
+  color: var(--dust-1);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.toward-mark[data-side='right'] b { left: 17px; }
+.toward-mark[data-side='left'] b { right: 17px; }
+
+/* the scale: bottom left of the free map (see src/ui/chrome.ts for the --inset-* variables) */
+.map-marks > .map-scale {
+  left: max(var(--inset-left, 0px), 14px);
+  top: auto;
+  bottom: calc(var(--inset-bottom, 0px) + 12px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 11px 4px 10px;
+  border-radius: 999px;
+  background: var(--glass-bg-quiet);
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+  color: var(--dust-1);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.map-scale i { height: 5px; border: solid var(--dust-2); border-width: 0 1px 1px; }
+
+/* what lies under the pointer: a pill beside it */
 .map-readout {
   position: absolute;
-  left: var(--gap-3);
-  bottom: var(--gap-2);
+  left: 0;
+  top: 0;
+  z-index: 2;
+  max-width: 290px;
   margin: 0;
+  padding: 6px 11px 7px;
+  border-radius: 12px;
   color: var(--dust-1);
-  font-size: var(--t-xs);
-  white-space: pre;
-  text-shadow: 0 0 3px #000, 0 0 3px #000;
+  font-size: 12px;
+  line-height: 1.4;
   pointer-events: none;
+}
+.map-readout .where { display: block; font-weight: 500; white-space: nowrap; }
+.map-readout .what { display: block; margin-top: 1px; color: var(--dust-2); text-wrap: pretty; }
+
+@media (max-width: 1099.98px) {
+  .map-marks > .map-scale { left: 10px; bottom: 10px; }
+}
+@media (max-width: 699.98px) {
+  /* the status pill takes the bottom of the map on a phone */
+  .map-marks > .map-scale { bottom: 64px; }
 }
 .map-error { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--gap-5); margin: 0; font-size: var(--t-md); }

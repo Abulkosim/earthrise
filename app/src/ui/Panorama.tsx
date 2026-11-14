@@ -3,6 +3,8 @@ import {
   useEffect, useLayoutEffect, useMemo, useRef, useState,
   type JSX, type KeyboardEvent, type PointerEvent,
 } from 'react'
+import { Earth, Sun } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { horizonAt } from '../model/sitecalc'
 import type { Horizon, SiteSeries } from '../model/types'
 import './Panorama.css'
@@ -345,7 +347,7 @@ export function Panorama({ horizon, series, k, stay, height = 190 }: PanoramaPro
   const [width, setWidth] = useState(0)
   const [view, setView] = useState<{ c: number | null; s: number }>({ c: null, s: SPAN_DEFAULT })
   const [hadData, setHadData] = useState(false)
-  const [hoverAz, setHoverAz] = useState<number | null>(null)
+  const [hover, setHover] = useState<{ az: number; x: number } | null>(null)
   const [fontTick, setFontTick] = useState(0)
 
   const ok = series !== null && series.n > 0 ? series : null
@@ -459,7 +461,7 @@ export function Panorama({ horizon, series, k, stay, height = 190 }: PanoramaPro
       }
     }
     const { c, s } = viewRef.current
-    setHoverAz(x >= GUTTER ? wrap360(c + ((x - GUTTER) / pw - 0.5) * s) : null)
+    setHover(x >= GUTTER ? { az: wrap360(c + ((x - GUTTER) / pw - 0.5) * s), x } : null)
   }
 
   const onPointerEnd = (e: PointerEvent<HTMLCanvasElement>) => {
@@ -488,37 +490,50 @@ export function Panorama({ horizon, series, k, stay, height = 190 }: PanoramaPro
     'Left and right arrow keys rotate the view.',
   ].filter(Boolean).join(' ')
 
-  let readout = 'Drag to turn, scroll to zoom'
-  if (hoverAz !== null) {
-    const hz = horizonAt(horizon, hoverAz)
-    readout = `Azimuth ${Math.round(hoverAz) % 360}°, ${horizon.terrain ? 'terrain horizon' : 'horizon'} ${signed1(hz)}°`
+  let readout = ''
+  if (hover !== null) {
+    const hz = horizonAt(horizon, hover.az)
+    readout = `Azimuth ${Math.round(hover.az) % 360}°, ${horizon.terrain ? 'terrain horizon' : 'horizon'} ${signed1(hz)}°`
   }
+  // the pill sits beside the guide line, on the side with more room
+  const pillSide = hover && hover.x > width / 2 ? { right: width - hover.x + 7 } : { left: (hover?.x ?? 0) + 7 }
 
   return (
     <div className="panorama" ref={wrapRef}>
-      <canvas
-        ref={canvasRef}
-        className="panorama-canvas"
-        style={{ height }}
-        role="img"
-        tabIndex={0}
-        aria-label={aria}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerEnd}
-        onPointerCancel={onPointerEnd}
-        onPointerLeave={() => setHoverAz(null)}
-        onKeyDown={onKeyDown}
-      />
+      <div className="panorama-frame" data-sun={sun && !sun.hidden ? 'up' : 'down'}>
+        <canvas
+          ref={canvasRef}
+          className="panorama-canvas"
+          style={{ height }}
+          role="img"
+          tabIndex={0}
+          aria-label={aria}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerEnd}
+          onPointerCancel={onPointerEnd}
+          onPointerLeave={() => setHover(null)}
+          onKeyDown={onKeyDown}
+        />
+        {hover !== null && (
+          <>
+            <span className="panorama-guide" style={{ left: hover.x, height: height - BAND }} aria-hidden="true" />
+            <span className="panorama-readout glass-quiet" style={pillSide}>{readout}</span>
+          </>
+        )}
+      </div>
       <div className="panorama-foot">
-        <span className={hoverAz === null ? 'panorama-readout is-hint' : 'panorama-readout'}>{readout}</span>
-        <span className="panorama-face">
-          <button type="button" className="is-sun" disabled={!sun} onClick={() => sun && face(sun.az)}>
-            Face the Sun
-          </button>
-          <button type="button" className="is-earth" disabled={!earth} onClick={() => earth && face(earth.az)}>
-            Face the Earth
-          </button>
+        <span className="panorama-hint">Drag to turn, scroll to zoom</span>
+        <span className="panorama-face" role="group" aria-label="Turn the view">
+          <span className="panorama-face-label" aria-hidden="true">Face the</span>
+          <Button type="button" variant="secondary" size="xs" className="h-6 rounded-full px-2.5" aria-label="Face the Sun" disabled={!sun} onClick={() => sun && face(sun.az)}>
+            <Sun aria-hidden="true" className="text-sun" />
+            Sun
+          </Button>
+          <Button type="button" variant="secondary" size="xs" className="h-6 rounded-full px-2.5" aria-label="Face the Earth" disabled={!earth} onClick={() => earth && face(earth.az)}>
+            <Earth aria-hidden="true" className="text-earth" />
+            Earth
+          </Button>
         </span>
       </div>
       {!horizon.terrain && (
