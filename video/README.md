@@ -11,7 +11,7 @@ Every picture is a screenshot of the running Earthrise app (no AI-generated imag
 
 ## Re-shoot and re-render (two commands)
 
-The app must be running at http://localhost:5201 (or pass `--url <address>`, or set `EARTHRISE_URL`). Chrome at
+The app must be running at http://localhost:5199 (or pass `--url <address>`, or set `EARTHRISE_URL`). Chrome at
 `/Applications/Google Chrome.app` (or set `CHROME`). Then, in this folder (`npm install` once):
 
 ```sh
@@ -155,7 +155,7 @@ no-music version (`npm run render:nomusic`).
 
 | Asset | Source | Licence |
 |---|---|---|
-| All pictures (`public/captures/*`, re-created by `npm run capture`) | Screenshots of the Earthrise app (http://localhost:5201 and its `validation.html`), headless Chrome on the GPU | The team's own work (Apache 2.0, see ../LICENSE); map data NASA LRO LOLA and JPL DE440 as credited in ../CREDITS.md |
+| All pictures (`public/captures/*`, re-created by `npm run capture`) | Screenshots of the Earthrise app (http://localhost:5199 and its `validation.html`), headless Chrome on the GPU | The team's own work (Apache 2.0, see ../LICENSE); map data NASA LRO LOLA and JPL DE440 as credited in ../CREDITS.md |
 | Archivo (variable) | `@fontsource-variable/archivo` | SIL Open Font License 1.1 |
 | Source Serif 4 (variable, italic) | `@fontsource-variable/source-serif-4` | SIL Open Font License 1.1 |
 | Music: "Cat Walk", Arulo | Mixkit, via video-shotcraft | Mixkit Stock Music Free License (free for commercial and non-commercial use, no attribution required) |

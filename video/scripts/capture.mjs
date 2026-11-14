@@ -1,6 +1,6 @@
 // Written with AI assistance (Claude); see the README.
 // Final capture for the Earthrise demo video (pipeline stage 4). ONE re-runnable script for all footage.
-// Every picture comes from the running app at http://localhost:5201/ (or --url / EARTHRISE_URL), headless Chrome on
+// Every picture comes from the running app at http://localhost:5199/ (or --url / EARTHRISE_URL), headless Chrome on
 // the GPU.
 //
 //   node scripts/capture.mjs                          # all sets (about 15 minutes)
