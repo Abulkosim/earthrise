@@ -49,7 +49,7 @@ export class Engine {
   private pfocus: Focus | null = null
   private pfocusKey = ''
   growth = 0.012
-  fine = 0.5
+  fine = 0.25 // smallest step as a share of the grid spacing; 0.25 is the setting the checks were run with
   dmax = 400e3
   baked = false
   stats = { bakeMs: 0, evalMs: 0, nowMs: 0 }
@@ -475,7 +475,14 @@ export class Engine {
 
   // ---- verification -----------------------------------------------------
   /** Horizon profiles (degrees) at given map points; result[i * naz + j] for point i, azimuth j. */
-  async probe(points: { x: number; y: number; mast: number }[], naz = 720): Promise<{ el: Float32Array; ground: Float32Array }> {
+  probe(points: { x: number; y: number; mast: number }[], naz = 720): Promise<{ el: Float32Array; ground: Float32Array }> {
+    // probes share textures, so they run one at a time
+    const run = this.probeQueue.then(() => this.probeNow(points, naz))
+    this.probeQueue = run.catch(() => undefined)
+    return run
+  }
+  private probeQueue: Promise<unknown> = Promise.resolve()
+  private async probeNow(points: { x: number; y: number; mast: number }[], naz: number): Promise<{ el: Float32Array; ground: Float32Array }> {
     const gl = this.gl, n = points.length
     // finest tiles around the points (they should lie within a few km of each other)
     const cx = points.reduce((a, p) => a + p.x, 0) / n, cy = points.reduce((a, p) => a + p.y, 0) / n
