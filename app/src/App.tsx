@@ -253,6 +253,12 @@ function Main({ data }: { data: DataStore }) {
   // a short explanation for people who have never thought about the lunar pole; shown once
   const [intro, setIntro] = useState(() => { try { return !location.hash && localStorage.getItem('earthrise-intro') !== 'seen' } catch { return false } })
   const closeIntro = () => { setIntro(false); try { localStorage.setItem('earthrise-intro', 'seen') } catch { /* private mode: show it again next time */ } }
+  // Hooks for scripted capture (screenshots, the demo video, the end-to-end check): the same state
+  // setters the interface uses, so a script can step time or the landing date frame by frame.
+  useEffect(() => {
+    const w = window as unknown as { __earthrise?: Record<string, unknown> }
+    w.__earthrise = { ...(w.__earthrise ?? {}), data, ui: { setNow, setLayer, setBrief, setView, setSelected, setCompared, setPlaying, sites: SITES } }
+  }, [data, setBrief])
   const [copied, setCopied] = useState(false)
   // the timeline's name column: narrow on phones, so the lanes keep most of the width
   const [nameW, setNameW] = useState(() => (window.innerWidth < 700 ? 124 : 268))
@@ -335,7 +341,7 @@ function Main({ data }: { data: DataStore }) {
         data={data} view={view} onView={setView} now={now} brief={brief} layer={layer} sites={markers}
         selected={selected} compared={compared.map((s) => s.id)} features={FEATURES}
         onPick={pick} onStatus={setStatus} span={span} onCalendar={setCalendar}
-        onEngine={(e) => { setEngine(e); (window as unknown as { __earthrise: unknown }).__earthrise = { engine: e, data } }}
+        onEngine={(e) => { setEngine(e); const w = window as unknown as { __earthrise?: Record<string, unknown> }; w.__earthrise = { ...(w.__earthrise ?? {}), engine: e, data } }}
       />
 
       {intro && (
