@@ -306,3 +306,23 @@ to 100,000 points on a cold start. A fresh load now ends at 266,256 points in
 - Deck and video shot again after the fixes; both carry the live address.
 - Removed 9 GB of data nobody reads any more (the first build of the web
   data, a clone of the data repository, the unadjusted 5 m and 10 m maps).
+
+## Sun 15 Nov 2026
+
+### 09:35 Live
+
+- The five repositories are public (the app and the four data repositories).
+  Before the switch the history was searched for keys, tokens and private
+  addresses: none.
+- `deploy/go-live.sh` turned Pages on and ran the workflow. The app deployed
+  on the first run; the two largest data sites took a few minutes longer to
+  build.
+- The address is https://abulkosim.github.io/earthrise/. The demo video is at
+  https://abulkosim.github.io/earthrise/demo.mp4 (28 s).
+- Checked on the live address in a clean private browser session: the
+  end-to-end check, 10 of 10; no failed request and no page error; tiles came
+  from all four data sites, both halves of the 5 m set included; the phone
+  layout loads.
+- A first visit downloads 84 MB and shows the complete map after about 34 s
+  on this connection (7 s of that is tracing horizons). For the judging the
+  app runs from the laptop, which needs no network.

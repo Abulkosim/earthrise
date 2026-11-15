@@ -38,9 +38,8 @@ https://abulkosim.github.io/earthrise/
 
 Source code: https://github.com/Abulkosim/earthrise
 
-[Team: both addresses work only once the repositories are public and
-`deploy/go-live.sh` has run. Open both in a private browser window before
-submitting.]
+[Team: both addresses are live since 15 November. Open them in a private
+browser window once more just before submitting.]
 
 ## Detailed project description
 
